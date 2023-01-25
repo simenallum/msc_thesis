@@ -19,11 +19,26 @@ class YOLOv8:
 				return self.detect_objects(image)
 
 		def initialize_model(self, path):
-				# self.session = onnxruntime.InferenceSession(path, providers=['CUDAExecutionProvider','CPUExecutionProvider'])
-				self.session = onnxruntime.InferenceSession(path, providers=['CPUExecutionProvider'])
-				# Get model info
-				self.get_input_details()
-				self.get_output_details()
+			opts = onnxruntime.SessionOptions()
+
+			self.session = onnxruntime.InferenceSession(
+				path,
+				opts,
+				providers = [
+				('CUDAExecutionProvider', {
+					'device_id': 0,
+					'arena_extend_strategy': 'kNextPowerOfTwo',
+					'gpu_mem_limit': 2 * 1024 * 1024 * 1024,
+					'cudnn_conv_algo_search': 'EXHAUSTIVE',
+					'do_copy_in_default_stream': True,
+					}),
+    		'CPUExecutionProvider',
+				]
+			)
+
+			# Get model info
+			self.get_input_details()
+			self.get_output_details()
 
 
 		def detect_objects(self, image):
@@ -31,8 +46,6 @@ class YOLOv8:
 
 				# Perform inference on the image
 				outputs = self.inference(input_tensor)
-
-				print(outputs)
 
 				self.boxes, self.scores, self.class_ids = self.process_output(outputs)
 
@@ -58,7 +71,8 @@ class YOLOv8:
 				start = time.perf_counter()
 				outputs = self.session.run(self.output_names, {self.input_names[0]: input_tensor})
 
-				# print(f"Inference time: {(time.perf_counter() - start)*1000:.2f} ms")
+				print(f"Inference time: {(time.perf_counter() - start)*1000:.2f} ms")
+				exit()
 				return outputs
 
 		def process_output(self, output):
@@ -74,7 +88,6 @@ class YOLOv8:
 
 				# Get the class with the highest confidence
 				class_ids = np.argmax(predictions[:, 4:], axis=1)
-				print(class_ids)
 
 				# Get bounding boxes for each object
 				boxes = self.extract_boxes(predictions)
@@ -124,13 +137,13 @@ class YOLOv8:
 
 if __name__ == '__main__':
 
-		model_path = "/home/simenallum/development/msc_thesis/best.onnx"
+		model_path = "/home/msccomputer/development/yolov8/human_and_bouys/weights/best.onnx"
 
 		# Initialize YOLOv7 object detector
 		yolov7_detector = YOLOv8(model_path, conf_thres=0.3, iou_thres=0.5)
 
 
-		img = cv2.imread('/home/simenallum/development/AOF_dataset/working/Dataset/images/test/k8_247.jpg')
+		img = cv2.imread('/home/msccomputer/development/datasets/aofdataset-1/test/images/z1_38_jpg.rf.13a27190a414bdf941a10e631f1100fe.jpg')
 
 		# Detect Objects
 		yolov7_detector(img)

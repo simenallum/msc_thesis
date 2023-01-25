@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 
 class_names = ['boat', 'bouy', 'human', 'kayak', 'sailboat', 'wind/sup-board']
+class_names = ['bouy', 'human']
 
 # Create a list of colors for each class where each color is a tuple of 3 integer values
 rng = np.random.default_rng(3)
