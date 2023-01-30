@@ -21,7 +21,7 @@ def generate_waypoints(altitude, camera_fov, overlap, area_size, lla_origin):
 
 	grid_points = generate_sample_points((h_coverage_overlap, v_coverage_overlap), area_size)
 
-	plot_grid_and_points((h_coverage, v_coverage), area_size, grid_points)
+	# plot_grid_and_points((h_coverage, v_coverage), area_size, grid_points)
 
 	LLA_points = xy_to_lat_lon_alt(grid_points, 15, lla_origin[0], lla_origin[1])
 
@@ -47,25 +47,33 @@ def plot_grid_and_points(grid_size, area_size, sample_points):
 
 
 def xy_to_lat_lon_alt(xy_coordinates, altitude, local_origin_lat, local_origin_lon):
-    ell_wgs84 = pymap3d.Ellipsoid('wgs84')
+	ell_wgs84 = pymap3d.Ellipsoid('wgs84')
 
-    # Convert the XY coordinates to longitude, latitude, and altitude
-    lat_lon_alt = []
-    for east, north in xy_coordinates:
-        lat1, lon1, h1 = pymap3d.ned2geodetic(north, east, altitude, \
-                      local_origin_lat, local_origin_lon, altitude, \
-                      ell=ell_wgs84, deg=True)  # wgs84 ellisoid
-        lat_lon_alt.append((lat1, lon1, h1))
-    
-    return lat_lon_alt
+	# Convert the XY coordinates to longitude, latitude, and altitude
+	lat_lon_alt = []
+	for east, north in xy_coordinates:
+		lat1, lon1, h1 = pymap3d.ned2geodetic(north, east, altitude, \
+					  local_origin_lat, local_origin_lon, altitude, \
+					  ell=ell_wgs84, deg=True)  # wgs84 ellisoid
+		lat_lon_alt.append((lat1, lon1, h1))
+	
+	return lat_lon_alt
 
 
 def generate_sample_points(grid_size, area_size):
-	x_points = np.arange(0, area_size[0], grid_size[0])
-	y_points = np.arange(0, area_size[1], grid_size[1])
+	x_points = np.arange(-area_size[0]/2, area_size[0]/2, grid_size[0])
+	y_points = np.arange(-area_size[1]/2, area_size[1]/2, grid_size[1])
 	
 	sample_points = np.transpose([np.tile(x_points, len(y_points)), np.repeat(y_points, len(x_points))])
-	return sample_points
+
+	sample_points_sorted = sort_points_by_distance_to_origin(sample_points)
+
+	return sample_points_sorted
+
+def sort_points_by_distance_to_origin(points):
+    distances = np.linalg.norm(points, axis=1)
+    sorted_indices = np.argsort(distances)
+    return points[sorted_indices]
 
 def get_fov_from_hfov(image_width, image_height, hfov):
 	aspect_ratio = image_width / image_height
@@ -77,12 +85,14 @@ def plot_waypoints_on_map(list):
 
 	df = pd.DataFrame(list, columns=["Lat", "Long", "Alt"])
 
-	color_scale = [(0, 'orange'), (1,'red')]
+	df.reset_index(inplace=True)
 
+	color_scale = [(0, 'orange'), (1,'red')]
 
 	fig = px.scatter_mapbox(df, 
 							lat="Lat", 
 							lon="Long",
+							color="index",
 							color_continuous_scale=color_scale,
 							zoom=8, 
 							height=800,
@@ -91,20 +101,60 @@ def plot_waypoints_on_map(list):
 	fig.update_layout(mapbox_style="open-street-map")
 	fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
 	fig.show()
+	
 
+def closest_node(coord, coords):
+    min_dist = float("inf")
+    closest = None
+    for c in coords:
+        dist = ((c[0]-coord[0])**2 + (c[1]-coord[1])**2 + (c[2]-coord[2])**2)**0.5
+        if dist < min_dist:
+            closest = c
+            min_dist = dist
+    return closest
+
+def traverse_closest(coords):
+    path = [coords[0]]
+    coords.pop(0)
+
+    while coords:
+        next_node = closest_node(path[-1], coords)
+        path.append(next_node)
+        coords.remove(next_node)
+
+    return path
+
+def traverse_coordinates(coords):
+	return traverse_closest(coords)
+
+def visualize_traversal(coords):
+    result = traverse_coordinates(coords)
+    lats, lons, alts = zip(*result)
+    plt.plot(lons, lats, '-o', markersize=3)
+    start = result[0]
+    end = result[-1]
+    plt.scatter(start[1], start[0], marker='o', color='red', label='start')
+    plt.scatter(end[1], end[0], marker='x', color='green', label='end')
+    plt.legend()
+    plt.show()
 
 def main():
 	camera_fov = get_fov_from_hfov(1280, 720, 69)
 	start_point = (63.504124, 10.486565, 25) # Lat, Lon, Alt
-	area_size = (1000, 1000)
-	overlap = 0.25
-	altitude = 25
-	print(camera_fov)
+	area_size = (2500, 2500)
+	overlap = 0.2
+	altitude = 15
 	waypoints = generate_waypoints(altitude, camera_fov, overlap, area_size, start_point)
+
+	print("Num waypoints: ", len(waypoints))
 	
 	# print(waypoints)
 
-	plot_waypoints_on_map(waypoints)
+	# plot_waypoints_on_map(waypoints)
+
+	traversed = traverse_coordinates(waypoints)
+
+	visualize_traversal(traversed)
 
 	return
 
