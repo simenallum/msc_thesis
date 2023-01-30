@@ -9,7 +9,6 @@ import pymap3d
 
 
 def generate_waypoints(altitude, camera_fov, overlap, area_size, lla_origin):
-	print("Altitude: ", altitude)
 	hfov = camera_fov[0]
 	vfov = camera_fov[1]
 
@@ -52,22 +51,16 @@ def xy_to_lat_lon_alt(xy_coordinates, altitude, local_origin_lat, local_origin_l
 
     # Convert the XY coordinates to longitude, latitude, and altitude
     lat_lon_alt = []
-    for xy in xy_coordinates:
-        lat1, lon1, h1 = pymap3d.ned2geodetic(xy[0], xy[1], altitude, \
+    for east, north in xy_coordinates:
+        lat1, lon1, h1 = pymap3d.ned2geodetic(north, east, altitude, \
                       local_origin_lat, local_origin_lon, altitude, \
                       ell=ell_wgs84, deg=True)  # wgs84 ellisoid
         lat_lon_alt.append((lat1, lon1, h1))
     
     return lat_lon_alt
 
-def determine_utm_zone(longitude):
-	return int((longitude + 183) / 6) + 1
-
-
 
 def generate_sample_points(grid_size, area_size):
-	x_step = area_size[0] / np.ceil(grid_size[0])
-	y_step = area_size[1] / np.ceil(grid_size[1])
 	x_points = np.arange(0, area_size[0], grid_size[0])
 	y_points = np.arange(0, area_size[1], grid_size[1])
 	
@@ -105,8 +98,9 @@ def main():
 	start_point = (63.504124, 10.486565, 25) # Lat, Lon, Alt
 	area_size = (1000, 1000)
 	overlap = 0.25
+	altitude = 25
 	print(camera_fov)
-	waypoints = generate_waypoints(12, camera_fov, overlap, area_size, start_point)
+	waypoints = generate_waypoints(altitude, camera_fov, overlap, area_size, start_point)
 	
 	# print(waypoints)
 
