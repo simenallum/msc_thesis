@@ -1,62 +1,88 @@
 import math
-from pyproj import Proj, transform
+import pyproj
 import plotly.express as px
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import pymap3d
 
 
-def generate_waypoints(start_pos, width, height, overlap, hfov_deg, altitude, focal_length, image_height, image_width):
-    # Define the UTM zone for the starting position
-    zone = int((start_pos[0] + 180) / 6) + 1
-    proj_in = Proj(proj='latlong', datum='WGS84')
-    proj_out = Proj(proj='utm', zone=zone, datum='WGS84')
+def generate_waypoints(altitude, camera_fov, overlap, area_size, lla_origin):
+	print("Altitude: ", altitude)
+	hfov = camera_fov[0]
+	vfov = camera_fov[1]
 
-    # Convert the starting position to UTM
-    easting, northing = transform(proj_in, proj_out, start_pos[0], start_pos[1])
+	# Calculate coverage area for each photo
+	h_coverage = (altitude * np.tan(np.deg2rad(hfov / 2))) ** 2
+	v_coverage = (altitude * np.tan(np.deg2rad(vfov / 2))) ** 2
 
-    #Convert FOV from degrees to radians
-    hfov_rad = math.radians(hfov_deg)
-    vfov_rad = math.atan(math.tan(hfov_rad / 2) * image_height / image_width)
-    #Convert FOV from radians to meters
-    fov_m = 2 * (altitude * math.tan(vfov_rad / 2))
-    #Calculate the size of each grid cell based on the camera FOV and overlap
-    cell_width = (fov_m / focal_length) * (1 - overlap)
-    cell_height = (fov_m / focal_length) * (1 - overlap)
+	h_coverage_overlap = (1-overlap)*h_coverage
+	v_coverage_overlap = (1-overlap)*v_coverage
 
-    #Calculate the number of columns and rows in the grid
-    cols = math.ceil(width / cell_width)
-    rows = math.ceil(height / cell_height)
+	grid_points = generate_sample_points((h_coverage_overlap, v_coverage_overlap), area_size)
 
-    # Initialize list to store the GNSS positions
-    waypoints = []
+	plot_grid_and_points((h_coverage, v_coverage), area_size, grid_points)
+
+	LLA_points = xy_to_lat_lon_alt(grid_points, 15, lla_origin[0], lla_origin[1])
+
+	return LLA_points
+
+def plot_grid_and_points(grid_size, area_size, sample_points):
+	fig, ax = plt.subplots()
+	x_step = grid_size[0]
+	y_step = grid_size[1]
+	colors = np.random.rand(len(sample_points),3)
+	for i, point in enumerate(sample_points):
+		ax.add_patch(
+			patches.Rectangle(
+				(point[0] - (x_step / 2), point[1] - (y_step / 2)), x_step, y_step,
+				facecolor=colors[i],
+				edgecolor='black',
+				alpha=0.1,
+				linewidth=1
+			)
+		)
+	ax.scatter(sample_points[:,0], sample_points[:,1], color='black')
+	plt.show()
+
+
+def xy_to_lat_lon_alt(xy_coordinates, altitude, local_origin_lat, local_origin_lon):
+    ell_wgs84 = pymap3d.Ellipsoid('wgs84')
+
+    # Convert the XY coordinates to longitude, latitude, and altitude
+    lat_lon_alt = []
+    for xy in xy_coordinates:
+        lat1, lon1, h1 = pymap3d.ned2geodetic(xy[0], xy[1], altitude, \
+                      local_origin_lat, local_origin_lon, altitude, \
+                      ell=ell_wgs84, deg=True)  # wgs84 ellisoid
+        lat_lon_alt.append((lat1, lon1, h1))
     
-    # Set the easting and northing to the center of the search area
-    easting = easting - (width / 2)
-    northing = northing - (height / 2)
+    return lat_lon_alt
 
-    # Iterate through each column and row to calculate the GNSS position for each grid cell
-    for i in range(cols):
-        for j in range(rows):
-            # Calculate the easting and northing for the current grid cell
-            easting_ = easting + (i * cell_width)
-            northing_ = northing + (j * cell_height)
+def determine_utm_zone(longitude):
+	return int((longitude + 183) / 6) + 1
 
-            # Convert the UTM position back to latitude and longitude
-            lon, lat = transform(proj_out, proj_in, easting_, northing_)
 
-			 # Append the GNSS position as a tuple to the list of waypoints
-            waypoints.append((lon, lat, altitude))
-    return waypoints
 
+def generate_sample_points(grid_size, area_size):
+	x_step = area_size[0] / np.ceil(grid_size[0])
+	y_step = area_size[1] / np.ceil(grid_size[1])
+	x_points = np.arange(0, area_size[0], grid_size[0])
+	y_points = np.arange(0, area_size[1], grid_size[1])
+	
+	sample_points = np.transpose([np.tile(x_points, len(y_points)), np.repeat(y_points, len(x_points))])
+	return sample_points
 
 def get_fov_from_hfov(image_width, image_height, hfov):
-	aspect_ratio = image_height / image_width
+	aspect_ratio = image_width / image_height
 	vfov = math.degrees(2 * math.atan(math.tan(math.radians(hfov / 2)) / aspect_ratio))
 
 	return (hfov, vfov)
 
 def plot_waypoints_on_map(list):
 
-	df = pd.DataFrame(list, columns=["Long", "Lat", "Alt"])
+	df = pd.DataFrame(list, columns=["Lat", "Long", "Alt"])
 
 	color_scale = [(0, 'orange'), (1,'red')]
 
@@ -75,11 +101,14 @@ def plot_waypoints_on_map(list):
 
 
 def main():
-	fov = get_fov_from_hfov(1280, 720, 69)
-	waypoints = generate_waypoints((63.504124, 10.486565), 1000, 1000, 0.1, 69, 15, 4.73e-3, 720, 1280)
+	camera_fov = get_fov_from_hfov(1280, 720, 69)
+	start_point = (63.504124, 10.486565, 25) # Lat, Lon, Alt
+	area_size = (1000, 1000)
+	overlap = 0.25
+	print(camera_fov)
+	waypoints = generate_waypoints(12, camera_fov, overlap, area_size, start_point)
 	
-	print(fov)
-	print(waypoints)
+	# print(waypoints)
 
 	plot_waypoints_on_map(waypoints)
 
