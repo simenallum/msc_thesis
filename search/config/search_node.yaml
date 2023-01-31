@@ -1,6 +1,0 @@
-topics:
-  input:
-    GNSS: "/ansafi/gnss"
-  output:
-    waypoint: "/search/waypoint"
-  

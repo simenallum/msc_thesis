@@ -3,12 +3,12 @@
 <launch>
 
     <node
-        name="human_search_node"
+        name="waypoint_node"
         pkg="search"
-        type="search_node.py"
+        type="waypoint_node.py"
         output="screen">
         
-        <param name="config_file" value="search_node.yaml" />
+        <param name="config_file" value="waypoint_node.yaml" />
 
     </node>
 

@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import pymap3d
+import os
 
 
 def generate_waypoints(altitude, camera_fov, overlap, area_size, lla_origin):
@@ -82,47 +83,58 @@ def get_fov_from_hfov(image_width, image_height, hfov):
 
 	return (hfov, vfov)
 
-def plot_traversal_on_map(list):
+def plot_traversal_on_map(list, distressed_coordinate=None):
 
-	df = pd.DataFrame(list, columns=["Lat", "Long", "Alt"])
+    df = pd.DataFrame(list, columns=["Lat", "Long", "Alt"])
 
-	df.reset_index(inplace=True)
+    df.reset_index(inplace=True)
 
-	start = df.iloc[0]
-	stop = df.iloc[-1]
+    start = df.iloc[0]
+    stop = df.iloc[-1]
 
-	fig = go.Figure()
+    fig = go.Figure()
 
-	color_scale = ['orange', 'red']
+    color_scale = ['orange', 'red']
 
-	fig.add_scattermapbox(lat=[start['Lat']],
-						  lon=[start['Long']],
-						  mode='markers',
-						  marker=dict(size=15, color=color_scale[0]),
-						  text=['Start'],
+    fig.add_scattermapbox(lat=[start['Lat']],
+                          lon=[start['Long']],
+                          mode='markers',
+                          marker=dict(size=15, color=color_scale[0]),
+                          text=['Start'],
+						  showlegend=True,
 						  hoverinfo='text')
 
-	fig.add_scattermapbox(lat=[stop['Lat']],
-						  lon=[stop['Long']],
-						  mode='markers',
-						  marker=dict(size=15, color=color_scale[1]),
-						  text=['Stop'],
-						  hoverinfo='text')
+    fig.add_scattermapbox(lat=[stop['Lat']],
+                          lon=[stop['Long']],
+                          mode='markers',
+                          marker=dict(size=15, color=color_scale[1]),
+                          text=['Stop'],
+                          hoverinfo='text')
 
-	fig.add_scattermapbox(lat=df['Lat'],
-						  lon=df['Long'],
-						  mode='lines+markers',
-						  line=dict(width=2, color='blue'),
-						  marker=dict(size=6, color='blue'),
-						  text=['' for i in range(len(df))],
-						  hoverinfo='skip')
+    fig.add_scattermapbox(lat=df['Lat'],
+                          lon=df['Long'],
+                          mode='lines+markers',
+                          line=dict(width=2, color='blue'),
+                          marker=dict(size=6, color='blue'),
+                          text=['' for i in range(len(df))],
+                          hoverinfo='skip')
 
-	fig.update_layout(mapbox_style="open-street-map",
-					  mapbox_zoom=13,
-					  mapbox_center={"lat": df['Lat'].mean(),
-									 "lon": df['Long'].mean()})
-	fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
-	fig.show()
+    if distressed_coordinate is not None:
+        lat, long, _ = distressed_coordinate
+        fig.add_scattermapbox(lat=[lat],
+                              lon=[long],
+                              mode='markers',
+                              marker=dict(size=15, color='green'),
+                              text=['Distressed'],
+                              hoverinfo='lon+lat+text')
+
+    fig.update_layout(mapbox_style="open-street-map",
+                      mapbox_zoom=13,
+                      mapbox_center={"lat": df['Lat'].mean(),
+                                     "lon": df['Long'].mean()})
+    fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+    fig.update_layout(legend=dict(x=0, y=1, traceorder="normal", font=dict(family="sans-serif", size=12, color="black"), bgcolor="LightSteelBlue", bordercolor="Black", borderwidth=2))
+    fig.show()
 	
 
 def closest_node(coord, coords):
@@ -237,12 +249,57 @@ def visualize_traversal_plt(result):
 	plt.legend()
 	plt.show()
 
+def save_lla_to_file(lla_list, filepath, filename):
+    # Check if the directory exists, if not create it
+    directory = os.path.dirname(f"{filepath}/{filename}")
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    
+    # Write the lla coordinates to the file
+    with open(os.path.join(filepath, filename), 'w') as file:
+        for lla in lla_list:
+            file.write("{},{},{}\n".format(lla[0], lla[1], lla[2]))
+
+def delete_first_and_return_second(filepath, filename):
+    # Read the lla coordinates from the file
+    lla_list = []
+    with open(os.path.join(filepath, filename), 'r') as file:
+        for line in file:
+            lat, lon, alt = map(float, line.strip().split(','))
+            lla_list.append((lat, lon, alt))
+
+    # Delete the first coordinate and return the second coordinate
+    if len(lla_list) >= 2:
+        lla_list.pop(0)
+        return lla_list[0]
+    else:
+        return []
+
+def return_first_coordinate(filepath, filename):
+    # Read the lla coordinates from the file
+    lla_list = []
+    with open(os.path.join(filepath, filename), 'r') as file:
+        for line in file:
+            lat, lon, alt = map(float, line.strip().split(','))
+            lla_list.append((lat, lon, alt))
+
+    # Return the first coordinate
+    if lla_list:
+        return lla_list[0]
+    else:
+        return []
+
+def get_traversal_grid(altitude, camera_fov, overlap, area_size, lla_origin):
+	waypoints = generate_waypoints(altitude, camera_fov, overlap, area_size, lla_origin)
+
+	return traverse_coordinates(waypoints)
+
 def main():
 	camera_fov = get_fov_from_hfov(1280, 720, 69)
-	start_point = (63.504124, 10.486565, 25) # Lat, Lon, Alt
-	area_size = (4000, 4000)
+	start_point = (63.447808, 10.407823, 25) # Lat, Lon, Alt
+	area_size = (250, 250)
 	overlap = 0.15
-	altitude = 25
+	altitude = 12
 	waypoints = generate_waypoints(altitude, camera_fov, overlap, area_size, start_point)
 
 	print("Num waypoints: ", len(waypoints))
@@ -251,7 +308,7 @@ def main():
 
 	# visualize_traversal_plt(traversed)
 
-	plot_traversal_on_map(traversed)
+	plot_traversal_on_map(traversed, start_point)
 
 	return
 
