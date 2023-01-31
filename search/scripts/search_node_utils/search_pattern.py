@@ -1,6 +1,7 @@
 import math
 import pyproj
 import plotly.express as px
+import plotly.graph_objs as go
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -55,7 +56,7 @@ def xy_to_lat_lon_alt(xy_coordinates, altitude, local_origin_lat, local_origin_l
 		lat1, lon1, h1 = pymap3d.ned2geodetic(north, east, altitude, \
 					  local_origin_lat, local_origin_lon, altitude, \
 					  ell=ell_wgs84, deg=True)  # wgs84 ellisoid
-		lat_lon_alt.append((lat1, lon1, h1))
+		lat_lon_alt.append((lat1, lon1, altitude))
 	
 	return lat_lon_alt
 
@@ -71,9 +72,9 @@ def generate_sample_points(grid_size, area_size):
 	return sample_points_sorted
 
 def sort_points_by_distance_to_origin(points):
-    distances = np.linalg.norm(points, axis=1)
-    sorted_indices = np.argsort(distances)
-    return points[sorted_indices]
+	distances = np.linalg.norm(points, axis=1)
+	sorted_indices = np.argsort(distances)
+	return points[sorted_indices]
 
 def get_fov_from_hfov(image_width, image_height, hfov):
 	aspect_ratio = image_width / image_height
@@ -81,80 +82,176 @@ def get_fov_from_hfov(image_width, image_height, hfov):
 
 	return (hfov, vfov)
 
-def plot_waypoints_on_map(list):
+def plot_traversal_on_map(list):
 
 	df = pd.DataFrame(list, columns=["Lat", "Long", "Alt"])
 
 	df.reset_index(inplace=True)
 
-	color_scale = [(0, 'orange'), (1,'red')]
+	start = df.iloc[0]
+	stop = df.iloc[-1]
 
-	fig = px.scatter_mapbox(df, 
-							lat="Lat", 
-							lon="Long",
-							color="index",
-							color_continuous_scale=color_scale,
-							zoom=8, 
-							height=800,
-							width=800)
+	fig = go.Figure()
 
-	fig.update_layout(mapbox_style="open-street-map")
+	color_scale = ['orange', 'red']
+
+	fig.add_scattermapbox(lat=[start['Lat']],
+						  lon=[start['Long']],
+						  mode='markers',
+						  marker=dict(size=15, color=color_scale[0]),
+						  text=['Start'],
+						  hoverinfo='text')
+
+	fig.add_scattermapbox(lat=[stop['Lat']],
+						  lon=[stop['Long']],
+						  mode='markers',
+						  marker=dict(size=15, color=color_scale[1]),
+						  text=['Stop'],
+						  hoverinfo='text')
+
+	fig.add_scattermapbox(lat=df['Lat'],
+						  lon=df['Long'],
+						  mode='lines+markers',
+						  line=dict(width=2, color='blue'),
+						  marker=dict(size=6, color='blue'),
+						  text=['' for i in range(len(df))],
+						  hoverinfo='skip')
+
+	fig.update_layout(mapbox_style="open-street-map",
+					  mapbox_zoom=13,
+					  mapbox_center={"lat": df['Lat'].mean(),
+									 "lon": df['Long'].mean()})
 	fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
 	fig.show()
 	
 
 def closest_node(coord, coords):
-    min_dist = float("inf")
-    closest = None
-    for c in coords:
-        dist = ((c[0]-coord[0])**2 + (c[1]-coord[1])**2 + (c[2]-coord[2])**2)**0.5
-        if dist < min_dist:
-            closest = c
-            min_dist = dist
-    return closest
+	min_dist = float("inf")
+	closest = None
+	for c in coords:
+		dist = ((c[0]-coord[0])**2 + (c[1]-coord[1])**2 + (c[2]-coord[2])**2)**0.5
+		if dist < min_dist:
+			closest = c
+			min_dist = dist
+	return closest
 
 def traverse_closest(coords):
-    path = [coords[0]]
-    coords.pop(0)
+	path = [coords[0]]
+	coords.pop(0)
 
-    while coords:
-        next_node = closest_node(path[-1], coords)
-        path.append(next_node)
-        coords.remove(next_node)
+	while coords:
+		next_node = closest_node(path[-1], coords)
+		path.append(next_node)
+		coords.remove(next_node)
 
-    return path
+	return path
 
 def traverse_coordinates(coords):
-	return traverse_closest(coords)
+	return traverse_lines(coords, 1e-5, 1e-5)
 
-def visualize_traversal(coords):
-    result = traverse_coordinates(coords)
-    lats, lons, alts = zip(*result)
-    plt.plot(lons, lats, '-o', markersize=3)
-    start = result[0]
-    end = result[-1]
-    plt.scatter(start[1], start[0], marker='o', color='red', label='start')
-    plt.scatter(end[1], end[0], marker='x', color='green', label='end')
-    plt.legend()
-    plt.show()
+from queue import PriorityQueue
+
+def spiral_explore(distances):
+	n = len(distances)
+	m = len(distances[0])
+	visited = [[False for _ in range(m)] for __ in range(n)]
+	start = (n//2, m//2)
+	q = PriorityQueue()
+	q.put((0, start))
+	while not q.empty():
+		curr_dist, curr = q.get()
+		if visited[curr[0]][curr[1]]:
+			continue
+		visited[curr[0]][curr[1]] = True
+		x, y = curr
+		neighbors = [(x+1, y), (x-1, y), (x, y+1), (x, y-1)]
+		for neighbor in neighbors:
+			if 0 <= neighbor[0] < n and 0 <= neighbor[1] < m:
+				q.put((curr_dist + distances[neighbor[0]][neighbor[1]], neighbor))
+	return visited
+
+def haversine(lon1, lat1, lon2, lat2):
+	R = 6371  # radius of the Earth in kilometers
+	dLat = math.radians(lat2 - lat1)
+	dLon = math.radians(lon2 - lon1)
+	lat1 = math.radians(lat1)
+	lat2 = math.radians(lat2)
+
+	a = math.sin(dLat/2)**2 + math.cos(lat1)*math.cos(lat2)*math.sin(dLon/2)**2
+	c = 2*math.asin(math.sqrt(a))
+
+	return R * c
+
+def generate_distances(coords):
+	n = len(coords)
+	distances = [[0] * n for _ in range(n)]
+	for i in range(n):
+		for j in range(i, n):
+			lat1, lon1, _ = coords[i]
+			lat2, lon2, _ = coords[j]
+			distances[i][j] = distances[j][i] = haversine(lon1, lat1, lon2, lat2)
+	return distances
+
+def traverse_lines(gnss_points, lat_threshold, lng_threshold):
+	"""
+	Traverse the vertical lines in a zig-zag pattern by alternating the direction of traversal.
+	Points are grouped by latitude and sorted by longitude.
+
+	:param gnss_points: list of GNSS points as (latitude, longitude, altitude) tuples
+	:param lat_threshold: maximum difference in latitude between points to be grouped together
+	:param lng_threshold: maximum difference in longitude between points to be grouped together
+	:return: list of GNSS points in zig-zag traversal order
+	"""
+	# Group points by latitude
+	grouped_points = {}
+	for lat, lng, alt in gnss_points:
+		for group_lat, group_points in grouped_points.items():
+			if abs(group_lat - lat) <= lat_threshold:
+				group = group_points
+				break
+		else:
+			grouped_points[lat] = []
+			group = grouped_points[lat]
+		group.append((lat, lng, alt))
+
+	# Sort each group of points by longitude
+	sorted_grouped_points = [(lat, sorted(group, key=lambda x: x[1])) for lat, group in sorted(grouped_points.items())]
+
+	result = []
+	direction = 1
+	for lat, lat_points in sorted_grouped_points:
+		if direction == -1:
+			lat_points = lat_points[::-1]
+		result.extend(lat_points)
+		direction = -direction
+	return result
+
+
+def visualize_traversal_plt(result):
+	lats, lons, alts = zip(*result)
+	plt.plot(lons, lats, '-o', markersize=3)
+	start = result[0]
+	end = result[-1]
+	plt.scatter(start[1], start[0], marker='o', color='red', label='start')
+	plt.scatter(end[1], end[0], marker='x', color='green', label='end')
+	plt.legend()
+	plt.show()
 
 def main():
 	camera_fov = get_fov_from_hfov(1280, 720, 69)
 	start_point = (63.504124, 10.486565, 25) # Lat, Lon, Alt
-	area_size = (2500, 2500)
-	overlap = 0.2
-	altitude = 15
+	area_size = (4000, 4000)
+	overlap = 0.15
+	altitude = 25
 	waypoints = generate_waypoints(altitude, camera_fov, overlap, area_size, start_point)
 
 	print("Num waypoints: ", len(waypoints))
-	
-	# print(waypoints)
-
-	# plot_waypoints_on_map(waypoints)
 
 	traversed = traverse_coordinates(waypoints)
 
-	visualize_traversal(traversed)
+	# visualize_traversal_plt(traversed)
+
+	plot_traversal_on_map(traversed)
 
 	return
 
