@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+
+    <node
+        name="deepsort_tracker"
+        pkg="deepsort_tracker"
+        type="run_tracker.py"
+        output="screen">
+        
+        <param name="config_file" value="deepsort_tracker.yaml" />
+
+    </node>
+
+</launch>
