@@ -41,6 +41,8 @@ class Tracker:
         Used during gating, comparing KF predicted and measured states. If True, only the x, y position of the state distribution is considered during gating. Defaults to False, where x,y, aspect ratio and height will be considered.
     """
 
+    GATING_THRESHOLD = np.sqrt(kalman_filter.chi2inv95[4])
+
     def __init__(
         self,
         metric,
@@ -50,6 +52,7 @@ class Tracker:
         override_track_class=None,
         today=None,
         gating_only_position=False,
+        _lambda=0,
     ):
         self.today = today
         self.metric = metric
@@ -57,6 +60,7 @@ class Tracker:
         self.max_age = max_age
         self.n_init = n_init
         self.gating_only_position = gating_only_position
+        self._lambda = _lambda
 
         self.kf = kalman_filter.KalmanFilter()
         self.tracks = []
@@ -126,31 +130,49 @@ class Tracker:
             np.asarray(features), np.asarray(targets), active_targets
         )
 
+    def _full_cost_metric(self, tracks, dets, track_indices, detection_indices):
+        """
+        This implements the full lambda-based cost-metric. However, in doing so, it disregards
+        the possibility to gate the position only which is provided by
+        linear_assignment.gate_cost_matrix().
+        Note that the Mahalanobis distance is itself an unnormalised metric. Given the cosine
+        distance being normalised, we employ a quick and dirty normalisation based on the
+        threshold: that is, we divide the positional-cost by the gating threshold, thus ensuring
+        that the valid values range 0-1.
+        
+        Note also that the authors work with the squared distance. I also sqrt this, so that
+        """
+        # Compute First the Position-based Cost Matrix
+        pos_cost = np.empty([len(track_indices), len(detection_indices)])
+        msrs = np.asarray([dets[i].to_xyah() for i in detection_indices])
+        for row, track_idx in enumerate(track_indices):
+            pos_cost[row, :] = np.sqrt(
+                self.kf.gating_distance(
+                    tracks[track_idx].mean, tracks[track_idx].covariance, msrs, False
+                )
+            ) / self.GATING_THRESHOLD
+        pos_gate = pos_cost > 1.0
+        # Now Compute the Appearance-based Cost Matrix
+        app_cost = self.metric.distance(
+            np.array([dets[i].feature for i in detection_indices]),
+            np.array([tracks[i].track_id for i in track_indices]),
+        )
+        app_gate = app_cost > self.metric.matching_threshold
+        # Now combine and threshold
+        cost_matrix = self._lambda * pos_cost + (1 - self._lambda) * app_cost
+        cost_matrix[np.logical_or(pos_gate, app_gate)] = linear_assignment.INFTY_COST
+        # Return Matrix
+        return cost_matrix
+
     def _match(self, detections):
-        def gated_metric(tracks, dets, track_indices, detection_indices):
-            features = np.array([dets[i].feature for i in detection_indices])
-            targets = np.array([tracks[i].track_id for i in track_indices])
-            cost_matrix = self.metric.distance(features, targets)
-            cost_matrix = linear_assignment.gate_cost_matrix(
-                self.kf, cost_matrix, tracks, dets, track_indices, detection_indices, only_position=self.gating_only_position
-            )
-
-            return cost_matrix
-
         # Split track set into confirmed and unconfirmed tracks.
         confirmed_tracks = [i for i, t in enumerate(self.tracks) if t.is_confirmed()]
-        unconfirmed_tracks = [
-            i for i, t in enumerate(self.tracks) if not t.is_confirmed()
-        ]
+        unconfirmed_tracks = [i for i, t in enumerate(self.tracks) if not t.is_confirmed()]
 
         # Associate confirmed tracks using appearance features.
-        (
-            matches_a,
-            unmatched_tracks_a,
-            unmatched_detections,
-        ) = linear_assignment.matching_cascade(
-            gated_metric,
-            self.metric.matching_threshold,
+        matches_a, unmatched_tracks_a, unmatched_detections = linear_assignment.matching_cascade(
+            self._full_cost_metric,
+            linear_assignment.INFTY_COST - 1,  # no need for self.metric.matching_threshold here,
             self.max_age,
             self.tracks,
             detections,
@@ -164,11 +186,7 @@ class Tracker:
         unmatched_tracks_a = [
             k for k in unmatched_tracks_a if self.tracks[k].time_since_update != 1
         ]
-        (
-            matches_b,
-            unmatched_tracks_b,
-            unmatched_detections,
-        ) = linear_assignment.min_cost_matching(
+        matches_b, unmatched_tracks_b, unmatched_detections = linear_assignment.min_cost_matching(
             iou_matching.iou_cost,
             self.max_iou_distance,
             self.tracks,

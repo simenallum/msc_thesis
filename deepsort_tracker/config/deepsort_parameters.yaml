@@ -1,0 +1,18 @@
+# Empty field is the same as None
+
+max_age: 30                 # Default: 30
+n_init: 30                  # Default: 3
+nms_max_overlap: 0.7        # Default: 1.0
+max_iou_distance: 0.7       # Default: 0.7
+max_cosine_distance: 0.2    # Default: 0.2
+nn_budget:                  # Default: None
+override_track_class:       # Default: None
+embedder: "clip_ViT-B/16"   # Default: "mobilenet"
+half: True                  # Default: True
+bgr: True                   # Default: True
+embedder_gpu: True          # Default: True
+embedder_model_name:        # Default: None
+embedder_wts:               # Default: None
+polygon: False              # Default: False
+today:                      # Default: None
+_lambda : 0.0               # Default: 0.0

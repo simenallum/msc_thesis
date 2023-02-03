@@ -4,6 +4,7 @@ import rospy
 import os
 import yaml
 import sys
+import time
 from cv_bridge import CvBridge
 
 
@@ -14,14 +15,22 @@ import sensor_msgs.msg
 
 class DeepSortTracker:
 
-	def __init__(self, config_file=None):
+	def __init__(self, config_file=None, deepsort_params=None):
 
 		rospy.init_node("DeepSortTracker", anonymous=False)
 
 		script_dir = os.path.dirname(os.path.realpath(__file__))
 
-		if config_file is None:
+		if config_file or deepsort_params is None:
 			config_file = rospy.get_param("~config_file")
+			deepsort_params = rospy.get_param("~deepsort_params")
+
+		try:
+			with open(f"{script_dir}/../config/{deepsort_params}") as f:
+				self.deepsort_params = yaml.safe_load(f)
+		except Exception as e:
+				rospy.logerr(f"Failed to load config: {e}")
+				sys.exit()
 
 		try:
 			with open(f"{script_dir}/../config/{config_file}") as f:
@@ -33,24 +42,7 @@ class DeepSortTracker:
 		self._initalize_parameters()
 		self._setup_publishers()
 		self._setup_subscribers()
-
-		self.tracker = DeepSort(
-			max_age=30,
-			n_init=30,
-			nms_max_overlap=0.7,
-			max_iou_distance=0.7,
-			max_cosine_distance=0.2,
-			nn_budget=None,
-			override_track_class=None,
-			embedder="clip_RN50x16",
-			half=True,
-			bgr=True,
-			embedder_gpu=True,
-			embedder_model_name=None, 
-			embedder_wts=None,
-			polygon=False,
-			today=None,
-		)
+		self._initialize_tracker()
 
 	def _initalize_parameters(self):
 		self.bridge = CvBridge()
@@ -79,7 +71,29 @@ class DeepSortTracker:
 				queue_size=10
 			)
 
+	def _initialize_tracker(self):
+		self.tracker = DeepSort(
+			max_age=self.deepsort_params["max_age"],
+			n_init=self.deepsort_params["n_init"],
+			nms_max_overlap=self.deepsort_params["nms_max_overlap"],
+			max_iou_distance=self.deepsort_params["max_iou_distance"],
+			max_cosine_distance=self.deepsort_params["max_cosine_distance"],
+			nn_budget=self.deepsort_params["nn_budget"],
+			override_track_class=self.deepsort_params["override_track_class"],
+			embedder=self.deepsort_params["embedder"],
+			half=self.deepsort_params["half"],
+			bgr=self.deepsort_params["bgr"],
+			embedder_gpu=self.deepsort_params["embedder_gpu"],
+			embedder_model_name=self.deepsort_params["embedder_model_name"],
+			embedder_wts=self.deepsort_params["embedder_wts"],
+			polygon=self.deepsort_params["polygon"],
+			today=self.deepsort_params["today"],
+			_lambda =self.deepsort_params["_lambda"],
+		)
+
 	def _new_bb_calback(self, bounding_boxes):
+		start = time.time()
+
 		bbs = self._extract_bbs(bounding_boxes.bounding_boxes)
 		frame = self.bridge.imgmsg_to_cv2(bounding_boxes.frame, "bgr8")
 
@@ -94,6 +108,9 @@ class DeepSortTracker:
 
 		if self.flag_publish_images_with_tracks:
 			self._publish_image_with_tracks(image)
+
+		end = time.time()
+		print("Time taken: {:.2f} ms".format((end - start) * 1000))
 
 	def _publish_image_with_tracks(self, image):
 		msg = self.bridge.cv2_to_imgmsg(image, "bgr8")

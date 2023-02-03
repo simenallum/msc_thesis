@@ -9,6 +9,7 @@
         output="screen">
         
         <param name="config_file" value="deepsort_tracker.yaml" />
+        <param name="deepsort_params" value="deepsort_parameters.yaml" />
 
     </node>
 

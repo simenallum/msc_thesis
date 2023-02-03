@@ -43,6 +43,7 @@ class DeepSort(object):
         embedder_wts=None,
         polygon=False,
         today=None,
+        _lambda=0
     ):
         """
 
@@ -95,6 +96,7 @@ class DeepSort(object):
             override_track_class=override_track_class,
             today=today,
             gating_only_position=gating_only_position,
+            _lambda = _lambda
         )
 
         if embedder is not None:
