@@ -84,6 +84,7 @@ class Track:
         det_conf=None,
         instance_mask=None,
         others=None,
+        EWMA_alpha=0.1,
     ):
         self.mean = mean
         self.covariance = covariance
@@ -91,6 +92,7 @@ class Track:
         self.hits = 1
         self.age = 1
         self.time_since_update = 0
+        self.EWMA_alpha = EWMA_alpha
 
         self.state = TrackState.Tentative
         self.features = []
@@ -225,7 +227,7 @@ class Track:
         self.age += 1
         self.time_since_update += 1
         self.original_ltwh = None
-        self.det_conf = None
+        self.det_conf = self.det_conf
         self.instance_mask = None
         self.others = None
 
@@ -246,7 +248,10 @@ class Track:
             self.mean, self.covariance, detection.to_xyah()
         )
         self.features.append(detection.feature)
-        self.det_conf = detection.confidence
+
+        # Using a exponential weighted moving average
+        self.det_conf = self.EWMA_alpha * detection.confidence + (1-self.EWMA_alpha)*self.det_conf
+
         self.det_class = detection.class_name
         self.instance_mask = detection.instance_mask
         self.others = detection.others

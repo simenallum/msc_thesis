@@ -7,7 +7,7 @@ def split_and_rename_images(image_folder, json_file):
         data = json.load(f)
 
     # Loop over each entry in the json data
-    for entry in data:
+    for entry in data["images"]:
         # Get the relevant information from the entry
         folder_name = entry["source"]["folder_name"]
         frame_no = str(entry["frame_index"])
@@ -25,10 +25,10 @@ def split_and_rename_images(image_folder, json_file):
 
 def main():
     # Path to the folder containing all the images
-    image_folder = "images"
+    image_folder = "/home/simenallum/Desktop/Compressed/train"
 
     # Path to the json file
-    json_file = "data.json"
+    json_file = "/home/simenallum/Downloads/instances_train_objects_in_water.json"
 
     split_and_rename_images(image_folder, json_file)
 

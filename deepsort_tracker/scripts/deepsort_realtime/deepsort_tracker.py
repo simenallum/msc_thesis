@@ -43,7 +43,10 @@ class DeepSort(object):
         embedder_wts=None,
         polygon=False,
         today=None,
-        _lambda=0
+        _lambda=0,
+        EWMA_alpha=0.1,
+        std_pos=0.5e-2,
+        std_vel=6.25e-3,
     ):
         """
 
@@ -83,6 +86,14 @@ class DeepSort(object):
             Whether detections are polygons (e.g. oriented bounding boxes)
         today: Optional[datetime.date]
             Provide today's date, for naming of tracks. Argument for deep_sort_realtime.deep_sort.tracker.Tracker.
+        _lambda: Optional[float] = 0.0
+            Wheter to only use apperance based matching or also add KF predictions. 0.0 is the same as only apperance based matching
+        EWMA_alpga: Optional[float] = 0.1
+            Sets the alpha for the exponential weighted moving average. Given in range [0, 1], where 1 means all weight on last sample.
+        std_pos: Optional[float] = 0.5e-2
+            Positional model uncertainty used in Kalman Filter predictions
+        std_vel: Optional[float] = 6.25e-3
+            Velocity model uncertainty used in Kalman Filter predictions.
         """
         self.nms_max_overlap = nms_max_overlap
         metric = nn_matching.NearestNeighborDistanceMetric(
@@ -96,7 +107,10 @@ class DeepSort(object):
             override_track_class=override_track_class,
             today=today,
             gating_only_position=gating_only_position,
-            _lambda = _lambda
+            _lambda = _lambda,
+            EWMA_alpha=EWMA_alpha,
+            std_pos=std_pos,
+            std_vel=std_vel,
         )
 
         if embedder is not None:

@@ -81,6 +81,7 @@ class DeepSortTracker:
 			nn_budget=self.deepsort_params["nn_budget"],
 			override_track_class=self.deepsort_params["override_track_class"],
 			embedder=self.deepsort_params["embedder"],
+			gating_only_position=self.deepsort_params["gating_only_position"],
 			half=self.deepsort_params["half"],
 			bgr=self.deepsort_params["bgr"],
 			embedder_gpu=self.deepsort_params["embedder_gpu"],
@@ -89,10 +90,12 @@ class DeepSortTracker:
 			polygon=self.deepsort_params["polygon"],
 			today=self.deepsort_params["today"],
 			_lambda =self.deepsort_params["_lambda"],
+			EWMA_alpha=self.deepsort_params["EWMA_alpha"],
+			std_pos=self.deepsort_params["std_pos"],
+			std_vel=self.deepsort_params["std_vel"],
 		)
 
 	def _new_bb_calback(self, bounding_boxes):
-		start = time.time()
 
 		bbs = self._extract_bbs(bounding_boxes.bounding_boxes)
 		frame = self.bridge.imgmsg_to_cv2(bounding_boxes.frame, "bgr8")
@@ -100,17 +103,15 @@ class DeepSortTracker:
 		tracks = self.tracker.update_tracks(bbs, frame=frame)
 
 		track_list = self._extract_bbs_and_trackid(tracks)
-
-
-		image = draw_detections(frame, track_list)
 		
-		
-
 		if self.flag_publish_images_with_tracks:
+			image = draw_detections(frame, track_list)
 			self._publish_image_with_tracks(image)
 
-		end = time.time()
-		print("Time taken: {:.2f} ms".format((end - start) * 1000))
+		if len(track_list) > 0:
+			tracks_msg = self._prepare_tracks_msg(track_list)
+			self._publish_confirmed_tracks(tracks_msg)
+
 
 	def _publish_image_with_tracks(self, image):
 		msg = self.bridge.cv2_to_imgmsg(image, "bgr8")
@@ -123,13 +124,39 @@ class DeepSortTracker:
 		result = []
 
 		for track in tracks:
-			bb = track.to_tlbr(orig=False)
-			conf = track.get_det_conf() or 0
-			id = track.track_id
+			# Only publish tracks that are confirmed. State == 2 for confirmed tracks
+			if track.state == 2 and track.time_since_update < 5:
+				bb = track.to_tlbr(orig=False)
+				conf = track.get_det_conf() or 0
+				id = int(track.track_id)
+				class_name = track.det_class
 
-			result.append([bb, conf, id])
+				print(id, conf)
+
+				result.append([bb, conf, id, class_name])
 
 		return result
+
+	def _publish_confirmed_tracks(self, tracks_msg):
+		self.tracks_pub.publish(tracks_msg)
+
+	def _prepare_tracks_msg(self, track_list):
+		boundingBoxes = BoundingBoxes()
+		boundingBoxes.header.stamp = rospy.Time.now()
+
+		for i in range(len(track_list)):
+			boundingBox = BoundingBox()
+			boundingBox.xmin = int(track_list[i][0][0])
+			boundingBox.ymin = int(track_list[i][0][1])
+			boundingBox.xmax = int(track_list[i][0][2])
+			boundingBox.ymax = int(track_list[i][0][3])
+			boundingBox.probability = track_list[i][1]
+			boundingBox.id = track_list[i][2]
+			boundingBox.Class = track_list[i][3]
+
+			boundingBoxes.bounding_boxes.append(boundingBox)
+
+		return boundingBoxes
 
 	def _shutdown():
 		rospy.loginfo("Shutting down tracker node")

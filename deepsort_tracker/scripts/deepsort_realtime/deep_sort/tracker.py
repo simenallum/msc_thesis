@@ -53,6 +53,9 @@ class Tracker:
         today=None,
         gating_only_position=False,
         _lambda=0,
+        EWMA_alpha=0.1,
+        std_pos=0.5e-2,
+        std_vel=6.25e-3,
     ):
         self.today = today
         self.metric = metric
@@ -61,8 +64,9 @@ class Tracker:
         self.n_init = n_init
         self.gating_only_position = gating_only_position
         self._lambda = _lambda
+        self.EWMA_alpha = EWMA_alpha
 
-        self.kf = kalman_filter.KalmanFilter()
+        self.kf = kalman_filter.KalmanFilter(std_pos, std_vel)
         self.tracks = []
         self.del_tracks_ids = []
         self._next_id = 1
@@ -220,6 +224,7 @@ class Tracker:
                 det_conf=detection.confidence,
                 instance_mask=detection.instance_mask,
                 others=detection.others,
+                EWMA_alpha = self.EWMA_alpha,
             )
         )
         self._next_id += 1

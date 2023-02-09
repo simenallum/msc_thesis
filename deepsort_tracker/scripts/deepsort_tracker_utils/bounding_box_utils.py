@@ -8,18 +8,20 @@ def convert_bboxes(bboxes):
         top = bbox.ymin
         width = bbox.xmax - bbox.xmin
         height = bbox.ymax - bbox.ymin
-        result.append(([left, top, width, height], bbox.probability, bbox.id))
+        result.append(([left, top, width, height], bbox.probability, bbox.Class))
     return result
 
 def draw_detections(image, tracks, mask_alpha=0.3):
     boxes = []
     scores = []
     track_ids = []
+    class_names = []
 
     for i in range(len(tracks)):
         boxes.append(tracks[i][0])
         scores.append(tracks[i][1])
         track_ids.append(tracks[i][2])
+        class_names.append(tracks[i][3])
 
     mask_img = image.copy()
     det_img = image.copy()
@@ -36,7 +38,7 @@ def draw_detections(image, tracks, mask_alpha=0.3):
     text_thickness = int(min([img_height, img_width]) * 0.001)
 
     # Draw bounding boxes and labels of detections
-    for box, score, track_id in zip(boxes, scores, track_ids):
+    for box, score, track_id, class_name in zip(boxes, scores, track_ids, class_names):
         color = color_map[track_id]
         color = tuple(color.tolist())
                 
@@ -48,7 +50,7 @@ def draw_detections(image, tracks, mask_alpha=0.3):
         # Draw fill rectangle in mask image
         cv2.rectangle(mask_img, (x1, y1), (x2, y2), color, -1)
 
-        label = f'track_{track_id}'
+        label = f'Class ID: {class_name}, Track: {track_id}'
         caption = f'{label} {int(score * 100)}%'
         (tw, th), _ = cv2.getTextSize(text=caption, fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                                       fontScale=size, thickness=text_thickness)
