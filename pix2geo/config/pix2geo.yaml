@@ -1,0 +1,5 @@
+topics:
+  input:
+    bounding_boxes: "/TRACKS"
+  output:
+    gnss_position: "/search/tracks"
