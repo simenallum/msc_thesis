@@ -105,12 +105,6 @@ class MobileNetV2_bottle(nn.Module):
         # make it nn.Sequential
         self.features = nn.Sequential(*self.features)
 
-        # # building classifier
-        # self.classifier = nn.Sequential(
-        #     nn.Dropout(0.2),
-        #     nn.Linear(self.last_channel, n_class),
-        # )
-
         self._initialize_weights()
 
     def forward(self, x):
