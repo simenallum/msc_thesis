@@ -1,9 +1,20 @@
 import os
 import shutil
 
-root_dir = '/home/simenallum/Desktop/Compressed/train'
+def check_first_char_in_txt_files(folder_path):
+    for filename in os.listdir(folder_path):
+        if filename.endswith(".txt"):
+            file_path = os.path.join(folder_path, filename)
+            with open(file_path) as f:
+                for line in f:
+                    if line.startswith("5"):
+                        print(f"{filename} starts with '5'")
+                        break
 
-for subdir, dirs, files in os.walk(root_dir):
-    for file in files:
-        if file.endswith('.jpg') or file.endswith('.jpeg') or file.endswith('.png'):
-            shutil.move(os.path.join(subdir, file), os.path.join(root_dir, file))
+def main():
+  folder_path = "/home/msccomputer/Desktop/SeaDroneSea/val_yolo/new_dir/labels"
+
+  check_first_char_in_txt_files(folder_path)
+
+if __name__ == '__main__':
+  main()

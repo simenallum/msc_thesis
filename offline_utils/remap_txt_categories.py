@@ -1,10 +1,17 @@
 import os
 
 # Define the mapping from old values to new values
-mapping = {1: 0, 2: 0, 3: 1, 6: None}
+mapping = {
+          0: 0, 
+          1: 0, 
+          2: 1, 
+          3: None,
+          4: None,
+          5: None
+        }
 
 # Define the path to the folder with the text files
-folder_path = '/home/simenallum/Desktop/SeaDroneSea/train_yolo_format/labels'
+folder_path = '/home/msccomputer/Desktop/SeaDroneSea/val_yolo/new_dir/labels'
 
 # Loop through each file in the folder
 for filename in os.listdir(folder_path):
