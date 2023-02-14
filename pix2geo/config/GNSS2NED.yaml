@@ -1,0 +1,5 @@
+topics:
+  input:
+    GNSS: "/gps_data"
+  output:
+    NED: "/NED_position_drone"

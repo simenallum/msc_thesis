@@ -7,6 +7,28 @@ import sys
 from cv_bridge import CvBridge
 import sensor_msgs.msg
 
+'''
+This  node will need to have access to the following data:
+	Parameters:
+		- Image size: width / height
+		- Camera FOV
+
+	Topics it need to access:
+		- Track detections
+		- WORLD NED POS OF DRONE ( This will be delayed relative to the BBOXs -> Save last couple of messages and do approx based on header? )
+		- Some sort of compass heading etc. 
+
+	Node publishing:
+		- Custom message with detection type, track ID, and coordinates?
+
+
+	This node will need to do the following:
+		- Extract bbx info from the track detections
+		- Estimate camera coordinates for detections
+		- transform the detections into "global" world frame -> transformation matrix from camera to world compensating for yaw angle?
+		- Possibly also estimate GLOBAL GNSS positions of objects? Use python package for transformation
+
+'''
 
 from yolov8_ros.msg import BoundingBox, BoundingBoxes
 

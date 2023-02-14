@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+
+    <node
+        name="gnss2ned"
+        pkg="pix2geo"
+        type="run_gnss2ned.py"
+        output="screen">
+        
+        <param name="config_file" value="GNSS2NED.yaml" />
+
+    </node>
+
+    <node name="NED_throttler" type="throttle" pkg="topic_tools" args="messages /NED_position_drone 1 NED_position_drone_t" />
+
+</launch>

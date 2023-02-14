@@ -1,53 +1,92 @@
 import numpy as np
+import math
 
-def image_to_gnss(detection_pixels, drone_position, drone_orientation, drone_velocity, camera_fov, camera_aspect_ratio):
-	# Calculate the field of view of the camera in the x and y direction
-	fov_x = camera_fov
-	fov_y = camera_fov / camera_aspect_ratio
-	
-	# Convert the detections from pixels to angles using the FOV values
-	x_angle = detection_pixels[0] * fov_x / 2
-	y_angle = detection_pixels[1] * fov_y / 2
-	
-	# Calculate the position of the object in the world coordinate system
-	r = drone_position[2] / np.sin(y_angle)
-	x_world = r * np.sin(x_angle) * np.cos(y_angle)
-	y_world = r * np.cos(x_angle) * np.cos(y_angle)
-	z_world = r * np.sin(y_angle)
-	
-	# Calculate the orientation of the camera in the world coordinate system
-	c_pitch = np.cos(drone_orientation[0])
-	s_pitch = np.sin(drone_orientation[0])
-	c_heading = np.cos(drone_orientation[1])
-	s_heading = np.sin(drone_orientation[1])
-	
-	R_pitch = np.array([[c_pitch, 0, -s_pitch], [0, 1, 0], [s_pitch, 0, c_pitch]])
-	R_heading = np.array([[c_heading, s_heading, 0], [-s_heading, c_heading, 0], [0, 0, 1]])
-	
-	R = np.matmul(R_heading, R_pitch)
-	
-	# Project the position of the object from the world coordinate system to the camera coordinate system
-	object_position_camera = np.matmul(R, np.array([x_world, y_world, z_world]))
-	
-	# Calculate the GNSS coordinate of the object
-	gnss_coordinate = drone_position + object_position_camera
-	
-	return gnss_coordinate
+def calculate_vfov(hfov, aspect_ratio):
+	"""
+	Calculates the vertical field of view (in degrees) of a camera given its horizontal field of view and aspect ratio.
+
+	Args:
+	- hfov (float): camera's horizontal field of view in degrees
+	- aspect_ratio (float): camera's aspect ratio (width / height)
+
+	Returns:
+	- float: camera's vertical field of view in degrees
+	"""
+
+	# Convert hfov to radians
+	hfov_rad = math.radians(hfov)
+
+	# Calculate the vertical field of view in degrees using the diagonal field of view and aspect ratio
+	vfov = math.degrees(2 * math.atan(math.tan(hfov_rad / 2) / aspect_ratio))
+
+	return vfov
+
+
+def calculate_detection_location(camera_fov, detection_pixels, drone_position, img_width, img_height):
+	"""
+	Calculate the location of a detected object in 3D space relative to a camera.
+
+	Args:
+	- camera_fov (tuple): (hfov, vfov) camera's field of view in degrees
+	- detection_pixels (tuple): (x, y) location of detected object in pixels
+	- drone_position (tuple): (longitude, latitude, altitude) of the drone's current position
+	- img_width (int): width of the image in pixels
+	- img_height (int): height of the image in pixels
+
+	Returns:
+	- tuple: (x, y, z) location of the detected object in meters relative to the drone in the camera coordinate system
+	"""
+
+	# The camera's field of view to horizontal and vertical field of view in degrees
+	hfov, vfov = camera_fov
+
+	# Calculate the angular displacement of the detected object from the center of the image
+	x_displacement_degrees = detection_pixels[0] - (img_width / 2)
+	y_displacement_degrees = detection_pixels[1] - (img_height / 2)
+
+	# Calculate the angular resolution of the camera in degrees per pixel
+	y_resolution_degrees_per_pixel = (vfov / img_height)
+	x_resolution_degrees_per_pixel = (hfov / img_width)
+
+	# Calculate the angular displacement of the detected object in degrees
+	x_displacement_degrees_from_center = x_resolution_degrees_per_pixel * x_displacement_degrees
+	y_displacement_degrees_from_center = y_resolution_degrees_per_pixel * y_displacement_degrees
+
+	# Transform the coordinates to the camera coordinate system
+	x_camera = drone_position[2] * math.tan(math.radians(x_displacement_degrees_from_center))
+	y_camera = -(drone_position[2] * math.tan(math.radians(y_displacement_degrees_from_center)))
+	z_camera = drone_position[2]
+
+	return (x_camera, y_camera, z_camera)
 
 
 
 
 def main():
-		detection_pixels = (450, 340)
-		drone_position = (9.269724, 47.671949,  8.599580615665955) # Long, lat, alt
+		detection_pixels = (0, 720)
+		drone_position = (9.269724, 47.671949,  10) # Long, lat, alt
 		drone_orientation = (45.4, 138.2)
 		drone_velocity = (-0.39998927134555207, 0.39998927134555207, 0.299991953509164)
-		camera_fov = 77
-		camera_aspect_ratio = 1280 / 720
+		mavic_hfov = 64.94
+		mavic_vfov = 51.03
+		img_width = 1280
+		img_height = 720
 
-		ret = image_to_gnss(detection_pixels, drone_position, drone_orientation, drone_velocity, camera_fov, camera_aspect_ratio)
+		anafi_hfov = 69
+		anafi_vfoc = calculate_vfov(anafi_hfov, img_width / img_height)
 
-		print(ret)
+		print("Anafi FOV: ", anafi_hfov, anafi_vfoc)
+
+		camera_fov = (mavic_hfov, mavic_vfov)
+
+		print("Mavic FOV: ", camera_fov)
+
+
+		x, y, z = calculate_detection_location(camera_fov, detection_pixels, drone_position, img_width, img_height)
+
+		print(x, y, z)
+
+
 
 if __name__ == "__main__":
 		main()

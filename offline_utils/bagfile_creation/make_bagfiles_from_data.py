@@ -85,7 +85,7 @@ def main():
     # Path to the json file
     json_file = "/home/simenallum/SeaDroneSea/instances_test_objects_in_water.json"
 
-    write_to_bagfile(json_file, "/home/simenallum/SeaDroneSea/images/", "DJI_0069")
+    write_to_bagfile(json_file, "/home/simenallum/SeaDroneSea/images/", "DJI_0003")
 
 if __name__ == "__main__":
     main()
