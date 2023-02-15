@@ -1,0 +1,1 @@
+Download clip according to this repo: https://github.com/openai/CLIP#usage

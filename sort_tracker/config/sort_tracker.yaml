@@ -1,0 +1,9 @@
+topics:
+  input:
+    bounding_boxes: "/yolo/search/boxes"
+  output:
+    tracks: "/search/tracks"
+    image_with_tracks: "/search/image_tracks"
+
+settings:
+  publish_image_with_tracks: True
