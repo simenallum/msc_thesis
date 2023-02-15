@@ -140,7 +140,7 @@ class Pix2Geo:
 
 	def _prepare_out_message(self, world_coordinates, track_id, det_probability, class_name):
 		msg = TrackWorldCoordinate()
-		msg.header = rospy.Time.now()
+		msg.header.stamp = rospy.Time.now()
 
 		msg.x = world_coordinates[0]
 		msg.y = world_coordinates[1]
