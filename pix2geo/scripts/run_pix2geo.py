@@ -34,6 +34,7 @@ This  node will need to have access to the following data:
 '''
 
 from yolov8_ros.msg import BoundingBox, BoundingBoxes
+from pix2geo.msg import TrackWorldCoordinate
 
 class Pix2Geo:
 
@@ -88,7 +89,11 @@ class Pix2Geo:
 		)
 
 	def _setup_publishers(self):
-		pass
+		self._track_world_coord_pub = rospy.Publisher(
+			self.config["topics"]["output"]["track_world_coordinate"], 
+			TrackWorldCoordinate, 
+			queue_size=10
+		)
 
 	def _new_tracks_callback(self, bounding_boxes):
 		tracks = self._extract_bbs(bounding_boxes.bounding_boxes)
@@ -97,8 +102,6 @@ class Pix2Geo:
 			track_id = track[3]
 			track_class = track[2]
 			track_probability = track[1]
-
-			print(f"Metrics for track: {track_id}, {track_probability} of the detection of a {track_class}")
 			
 			center = pix2geo_utils.utils.get_bounding_box_center(track[0])
 
@@ -110,16 +113,14 @@ class Pix2Geo:
 				img_width=self._img_width
 			)
 
-			print("Detection camera frame: ", detection_camera_frame)
-
 			detection_world_frame = pix2geo_utils.utils.transform_point_cam_to_world(
 				detection_camera_frame,
 				translation=self._last_gnss_meas,
 				yaw_deg=self._last_compass_meas
 			)
-			
-			print("Detection world frame: ", detection_world_frame)
-			print("---------------------------------\n")
+		
+
+			self._publish_track_world_coordinate(detection_world_frame, track_id, track_probability, track_class)
 
 	def _new_compass_meas_callback(self, measurement):
 		self._last_compass_meas = measurement.data
@@ -137,6 +138,22 @@ class Pix2Geo:
 			result.append(([left, top, width, height], bbox.probability, bbox.Class, bbox.id))
 		return result
 
+	def _prepare_out_message(self, world_coordinates, track_id, det_probability, class_name):
+		msg = TrackWorldCoordinate()
+		msg.header = rospy.Time.now()
+
+		msg.x = world_coordinates[0]
+		msg.y = world_coordinates[1]
+		msg.z = world_coordinates[2]
+		msg.track_id = track_id
+		msg.probability = det_probability
+		msg.class_name = class_name
+
+		return msg
+
+	def _publish_track_world_coordinate(self, world_coordinates, track_id, det_probability, class_name):
+		msg = self._prepare_out_message(world_coordinates, track_id, det_probability, class_name)
+		self._track_world_coord_pub.publish(msg)
 
 	def _shutdown():
 		rospy.loginfo("Shutting pix2geo node")

@@ -4,4 +4,4 @@ topics:
     compass: "/compass_heading_t"
     NED_gnss: "/NED_position_drone_t"
   output:
-    gnss_position: "/search/tracks/gnss"
+    track_world_coordinate: "/search/tracks/world_coordinates"
