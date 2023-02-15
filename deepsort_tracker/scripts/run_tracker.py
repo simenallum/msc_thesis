@@ -96,7 +96,7 @@ class DeepSortTracker:
 		)
 
 	def _new_bb_calback(self, bounding_boxes):
-
+		start = time.time()
 		bbs = self._extract_bbs(bounding_boxes.bounding_boxes)
 		frame = self.bridge.imgmsg_to_cv2(bounding_boxes.frame, "bgr8")
 
@@ -112,6 +112,8 @@ class DeepSortTracker:
 			tracks_msg = self._prepare_tracks_msg(track_list)
 			self._publish_confirmed_tracks(tracks_msg)
 
+		end = time.time()
+		print("Time taken: {:.2f} ms".format((end - start) * 1000))
 
 	def _publish_image_with_tracks(self, image):
 		msg = self.bridge.cv2_to_imgmsg(image, "bgr8")
@@ -130,8 +132,6 @@ class DeepSortTracker:
 				conf = track.get_det_conf() or 0
 				id = int(track.track_id)
 				class_name = track.det_class
-
-				print(id, conf)
 
 				result.append([bb, conf, id, class_name])
 

@@ -66,7 +66,7 @@ class Pix2Geo:
 		self._camera_hfov = rospy.get_param("/drone/camera/camera_hfov")
 		self._aspect_ratio = self._img_width / self._img_height
 
-		self._camera_fov = pix2geo_utils.utils.calculate_vfov(self._camera_hfov, self._aspect_ratio)
+		self._camera_fov = (self._camera_hfov, pix2geo_utils.utils.calculate_vfov(self._camera_hfov, self._aspect_ratio))
 
 	def _setup_subscribers(self):
 		rospy.Subscriber(

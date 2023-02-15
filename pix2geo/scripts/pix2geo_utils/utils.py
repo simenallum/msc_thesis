@@ -24,12 +24,10 @@ def calculate_vfov(hfov, aspect_ratio):
 	return vfov
 
 def get_bounding_box_center(bounding_box):
-	centers = []
 	left, top, width, height = bounding_box
 	center_x = left + width / 2
 	center_y = top + height / 2
-	centers.append([center_x, center_y])
-	return centers
+	return [center_x, center_y]
 
 
 def calculate_detection_location(camera_fov, detection_pixels, drone_position, img_width, img_height):
