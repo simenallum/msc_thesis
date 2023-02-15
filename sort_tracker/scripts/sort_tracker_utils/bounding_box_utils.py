@@ -4,24 +4,24 @@ import cv2
 def convert_bboxes(bboxes):
     result = []
     for bbox in bboxes:
-        left = bbox.xmin
-        top = bbox.ymin
-        width = bbox.xmax - bbox.xmin
-        height = bbox.ymax - bbox.ymin
-        result.append(([left, top, width, height], bbox.probability, bbox.Class))
-    return result
+        xmin = bbox.xmin
+        ymin = bbox.ymin
+        xmax = bbox.xmax
+        ymax = bbox.ymax
+        result.append([xmin, ymin, xmax, ymax, bbox.probability, bbox.id])
+    return np.array(result)
 
 def draw_detections(image, tracks, mask_alpha=0.3):
     boxes = []
     scores = []
+    class_id = []
     track_ids = []
-    class_names = []
 
     for i in range(len(tracks)):
-        boxes.append(tracks[i][0])
-        scores.append(tracks[i][1])
-        track_ids.append(tracks[i][2])
-        class_names.append(tracks[i][3])
+        boxes.append([int(tracks[i][0]), int(tracks[i][1]), int(tracks[i][2]), int(tracks[i][3])])
+        track_ids.append(tracks[i][4])
+        class_id.append(tracks[i][5])
+        scores.append(tracks[i][6])
 
     mask_img = image.copy()
     det_img = image.copy()
@@ -38,11 +38,11 @@ def draw_detections(image, tracks, mask_alpha=0.3):
     text_thickness = int(min([img_height, img_width]) * 0.001)
 
     # Draw bounding boxes and labels of detections
-    for box, score, track_id, class_name in zip(boxes, scores, track_ids, class_names):
+    for box, score, track_id, class_id in zip(boxes, scores, track_ids, class_id):
         color = color_map[track_id]
         color = tuple(color.tolist())
                 
-        x1, y1, x2, y2 = box.astype(int)
+        x1, y1, x2, y2 = box
 
         # Draw rectangle
         cv2.rectangle(det_img, (x1, y1), (x2, y2), color, 2)
@@ -50,7 +50,7 @@ def draw_detections(image, tracks, mask_alpha=0.3):
         # Draw fill rectangle in mask image
         cv2.rectangle(mask_img, (x1, y1), (x2, y2), color, -1)
 
-        label = f'Class ID: {class_name}, Track: {track_id}'
+        label = f'Class ID: {class_id}, Track: {track_id}'
         caption = f'{label} {int(score * 100)}%'
         (tw, th), _ = cv2.getTextSize(text=caption, fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                                       fontScale=size, thickness=text_thickness)

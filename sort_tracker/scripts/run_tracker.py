@@ -12,21 +12,21 @@ from sort_tracker_utils.bounding_box_utils import convert_bboxes, draw_detection
 from sort.sort import *
 import sensor_msgs.msg
 
-class DeepSortTracker:
+class SortTracker:
 
-	def __init__(self, config_file=None, deepsort_params=None):
+	def __init__(self, config_file=None, sort_params=None):
 
-		rospy.init_node("DeepSortTracker", anonymous=False)
+		rospy.init_node("SortTracker", anonymous=False)
 
 		script_dir = os.path.dirname(os.path.realpath(__file__))
 
-		if config_file or deepsort_params is None:
+		if config_file or sort_params is None:
 			config_file = rospy.get_param("~config_file")
-			deepsort_params = rospy.get_param("~deepsort_params")
+			sort_params = rospy.get_param("~sort_params")
 
 		try:
-			with open(f"{script_dir}/../config/{deepsort_params}") as f:
-				self.deepsort_params = yaml.safe_load(f)
+			with open(f"{script_dir}/../config/{sort_params}") as f:
+				self.sort_params = yaml.safe_load(f)
 		except Exception as e:
 				rospy.logerr(f"Failed to load config: {e}")
 				sys.exit()
@@ -78,15 +78,15 @@ class DeepSortTracker:
 		bbs = self._extract_bbs(bounding_boxes.bounding_boxes)
 		frame = self.bridge.imgmsg_to_cv2(bounding_boxes.frame, "bgr8")
 
+		if len(bbs) == 0:
+			bbs = np.empty((0, 5))
 		tracks = self.tracker.update(bbs)
 
-		track_list = self._extract_bbs_and_trackid(tracks)
+		# track_list = self._extract_bbs_and_trackid(tracks)
 
-		print(track_list)
-		
-		# if self.flag_publish_images_with_tracks:
-		# 	image = draw_detections(frame, track_list)
-		# 	self._publish_image_with_tracks(image)
+		if self.flag_publish_images_with_tracks:
+			image = draw_detections(frame, tracks)
+			self._publish_image_with_tracks(image)
 
 		# if len(track_list) > 0:
 		# 	tracks_msg = self._prepare_tracks_msg(track_list)
@@ -152,7 +152,7 @@ class DeepSortTracker:
 
 
 def main():
-		Detector = DeepSortTracker()
+		Detector = SortTracker()
 		Detector.start()
 
 if __name__ == "__main__":
