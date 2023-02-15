@@ -6,6 +6,9 @@ import yaml
 import sys
 from cv_bridge import CvBridge
 import sensor_msgs.msg
+from std_msgs.msg import Float32
+from geometry_msgs.msg import PointStamped
+import pix2geo_utils.utils 
 
 '''
 This  node will need to have access to the following data:
@@ -55,21 +58,74 @@ class Pix2Geo:
 		self._setup_subscribers()
 
 	def _initalize_parameters(self):
-		pass
+		self._last_compass_meas = None
+		self._last_gnss_meas = None
+
+		self._img_width = rospy.get_param("/drone/camera/img_width")
+		self._img_height = rospy.get_param("/drone/camera/img_height")
+		self._camera_hfov = rospy.get_param("/drone/camera/camera_hfov")
+		self._aspect_ratio = self._img_width / self._img_height
+
+		self._camera_fov = pix2geo_utils.utils.calculate_vfov(self._camera_hfov, self._aspect_ratio)
 
 	def _setup_subscribers(self):
 		rospy.Subscriber(
-			self.config["topics"]["input"]["bounding_boxes"], 
+			self.config["topics"]["input"]["tracks"], 
 			BoundingBoxes, 
-			self._new_bb_calback
+			self._new_tracks_callback
+		)
+
+		rospy.Subscriber(
+			self.config["topics"]["input"]["compass"], 
+			Float32, 
+			self._new_compass_meas_callback
+		)
+
+		rospy.Subscriber(
+			self.config["topics"]["input"]["NED_gnss"], 
+			PointStamped, 
+			self._new_NED_gnss_meas_callback
 		)
 
 	def _setup_publishers(self):
 		pass
 
-	def _new_bb_calback(self, bounding_boxes):
+	def _new_tracks_callback(self, bounding_boxes):
+		tracks = self._extract_bbs(bounding_boxes.bounding_boxes)
 
-		bbs = self._extract_bbs(bounding_boxes.bounding_boxes)
+		for track in tracks:
+			track_id = track[3]
+			track_class = track[2]
+			track_probability = track[1]
+
+			print(f"Metrics for track: {track_id}, {track_probability} of the detection of a {track_class}")
+			
+			center = pix2geo_utils.utils.get_bounding_box_center(track[0])
+
+			detection_camera_frame = pix2geo_utils.utils.calculate_detection_location(
+				camera_fov=self._camera_fov,
+				detection_pixels=center,
+				drone_position=self._last_gnss_meas,
+				img_height=self._img_height,
+				img_width=self._img_width
+			)
+
+			print("Detection camera frame: ", detection_camera_frame)
+
+			detection_world_frame = pix2geo_utils.utils.transform_point_cam_to_world(
+				detection_camera_frame,
+				translation=self._last_gnss_meas,
+				yaw_deg=self._last_compass_meas
+			)
+			
+			print("Detection world frame: ", detection_world_frame)
+			print("---------------------------------\n")
+
+	def _new_compass_meas_callback(self, measurement):
+		self._last_compass_meas = measurement.data
+
+	def _new_NED_gnss_meas_callback(self, measurment):
+		self._last_gnss_meas = [measurment.point.x, measurment.point.y, measurment.point.z]
 
 	def _extract_bbs(self, bboxes):
 		result = []
@@ -78,7 +134,7 @@ class Pix2Geo:
 			top = bbox.ymin
 			width = bbox.xmax - bbox.xmin
 			height = bbox.ymax - bbox.ymin
-			result.append(([left, top, width, height], bbox.probability, bbox.Class))
+			result.append(([left, top, width, height], bbox.probability, bbox.Class, bbox.id))
 		return result
 
 

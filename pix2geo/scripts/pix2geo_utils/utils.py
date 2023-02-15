@@ -1,5 +1,7 @@
 import numpy as np
 import math
+from scipy.spatial.transform import Rotation
+
 
 def calculate_vfov(hfov, aspect_ratio):
 	"""
@@ -20,6 +22,14 @@ def calculate_vfov(hfov, aspect_ratio):
 	vfov = math.degrees(2 * math.atan(math.tan(hfov_rad / 2) / aspect_ratio))
 
 	return vfov
+
+def get_bounding_box_center(bounding_box):
+	centers = []
+	left, top, width, height = bounding_box
+	center_x = left + width / 2
+	center_y = top + height / 2
+	centers.append([center_x, center_y])
+	return centers
 
 
 def calculate_detection_location(camera_fov, detection_pixels, drone_position, img_width, img_height):
@@ -53,39 +63,50 @@ def calculate_detection_location(camera_fov, detection_pixels, drone_position, i
 	y_displacement_degrees_from_center = y_resolution_degrees_per_pixel * y_displacement_degrees
 
 	# Transform the coordinates to the camera coordinate system
-	x_camera = drone_position[2] * math.tan(math.radians(x_displacement_degrees_from_center))
-	y_camera = -(drone_position[2] * math.tan(math.radians(y_displacement_degrees_from_center)))
+	x_camera = (drone_position[2] * math.tan(math.radians(x_displacement_degrees_from_center)))
+	y_camera = (drone_position[2] * math.tan(math.radians(y_displacement_degrees_from_center)))
 	z_camera = drone_position[2]
 
 	return (x_camera, y_camera, z_camera)
 
+def transform_point_cam_to_world(point, translation, yaw_deg):
+	# Convert yaw angle to radians
+	yaw_rad = math.radians(yaw_deg)
 
+	fixed_rotation = Rotation.from_euler('z', 90, degrees=True)
+	yaw_rotation = Rotation.from_euler('z', yaw_deg, degrees=True)
+
+	tot_rot = yaw_rotation * fixed_rotation
+	
+	# Apply the translation and rotation to the point
+	rotated_point = tot_rot.apply(point)
+	point_new = rotated_point + [translation[0], translation[1], -translation[2]] # Negative z due to NED frame
+	return point_new
 
 
 def main():
-		detection_pixels = (0, 720)
+		detection_pixels = (1280, 720)
 		drone_position = (9.269724, 47.671949,  10) # Long, lat, alt
 		drone_orientation = (45.4, 138.2)
+		drone_pos_ned = (1, 1, 10)
 		drone_velocity = (-0.39998927134555207, 0.39998927134555207, 0.299991953509164)
 		mavic_hfov = 64.94
 		mavic_vfov = 51.03
 		img_width = 1280
 		img_height = 720
+		compass_heading = 0 #138.2
 
 		anafi_hfov = 69
 		anafi_vfoc = calculate_vfov(anafi_hfov, img_width / img_height)
-
-		print("Anafi FOV: ", anafi_hfov, anafi_vfoc)
-
 		camera_fov = (mavic_hfov, mavic_vfov)
 
-		print("Mavic FOV: ", camera_fov)
 
+		det_cam = calculate_detection_location(camera_fov, detection_pixels, drone_position, img_width, img_height)
+		print("CAM: ", det_cam)
 
-		x, y, z = calculate_detection_location(camera_fov, detection_pixels, drone_position, img_width, img_height)
-
-		print(x, y, z)
-
+		det_world = transform_point_cam_to_world(det_cam, drone_pos_ned, compass_heading)
+		
+		print("WOLRD: ", det_world)
 
 
 if __name__ == "__main__":
