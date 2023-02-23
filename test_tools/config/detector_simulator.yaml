@@ -1,0 +1,15 @@
+topics:
+  input:
+    image: "/anafi/image"
+  output:
+    boxes: "/yolo/platform/boxes"
+    detectionImage: "/yolo/platform/detectionImage"
+
+publish_detected_image: True
+
+settings:
+  class_names: ["humans", "floting_objects", "safe_landing", "dummy", "dummy", "dummy"]
+  AT_ids: [0, 1, 2, 3, 4, 5]
+  detection_confidence: 0.8
+
+
