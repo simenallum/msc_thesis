@@ -4,7 +4,7 @@
 
     <node
         name="gnss2ned"
-        pkg="pix2geo"
+        pkg="test_tools"
         type="run_gnss2ned.py"
         output="screen">
         
