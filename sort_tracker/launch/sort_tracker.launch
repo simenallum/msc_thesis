@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+
+    <node
+        name="sort_tracker"
+        pkg="sort_tracker"
+        type="run_tracker.py"
+        output="screen">
+        
+        <param name="config_file" value="sort_tracker.yaml" />
+        <param name="sort_params" value="sort_parameters.yaml" />
+
+    </node>
+
+</launch>

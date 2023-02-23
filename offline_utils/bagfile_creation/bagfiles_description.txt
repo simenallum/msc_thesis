@@ -1,0 +1,5 @@
+DJI_0065: 286 -> 78 DEG const pitch. Ingen velocity. Kan approximeres til ish 90.
+DJI_0063: 4138 -> 72 s utover 90 deg pitch. Roterende heading.
+DJI_0069: 1484 -> 39 s utover 90 deg pitch. Meget bra 10 sec.
+DJI_0064: 116 -> Veldig kort video. 4s. Bra content.
+DJI_0011_d3: 2411 -> M210 KAMERA

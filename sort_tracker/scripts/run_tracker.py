@@ -7,27 +7,26 @@ import sys
 import time
 from cv_bridge import CvBridge
 
-
-from deepsort_realtime.deepsort_tracker import DeepSort
 from yolov8_ros.msg import BoundingBox, BoundingBoxes
-from deepsort_tracker_utils.bounding_box_utils import convert_bboxes, draw_detections
+from sort_tracker_utils.bounding_box_utils import convert_bboxes, draw_detections
+from sort.sort import *
 import sensor_msgs.msg
 
-class DeepSortTracker:
+class SortTracker:
 
-	def __init__(self, config_file=None, deepsort_params=None):
+	def __init__(self, config_file=None, sort_params=None):
 
-		rospy.init_node("DeepSortTracker", anonymous=False)
+		rospy.init_node("SortTracker", anonymous=False)
 
 		script_dir = os.path.dirname(os.path.realpath(__file__))
 
-		if config_file or deepsort_params is None:
+		if config_file or sort_params is None:
 			config_file = rospy.get_param("~config_file")
-			deepsort_params = rospy.get_param("~deepsort_params")
+			sort_params = rospy.get_param("~sort_params")
 
 		try:
-			with open(f"{script_dir}/../config/{deepsort_params}") as f:
-				self.deepsort_params = yaml.safe_load(f)
+			with open(f"{script_dir}/../config/{sort_params}") as f:
+				self.sort_params = yaml.safe_load(f)
 		except Exception as e:
 				rospy.logerr(f"Failed to load config: {e}")
 				sys.exit()
@@ -46,8 +45,17 @@ class DeepSortTracker:
 
 	def _initalize_parameters(self):
 		self.bridge = CvBridge()
+		self.class_combinations = {}
 
 		self.flag_publish_images_with_tracks = self.config["settings"]["publish_image_with_tracks"]
+		
+		self.max_age = self.sort_params['max_age']
+		self.min_hits = self.sort_params['min_hits']
+		self.iou_threshold = self.sort_params['iou_threshold']
+		self.EWMA_alpha = self.sort_params['EWMA_alpha']
+		self.init_cov = self.sort_params['init_cov']
+		self.measurement_cov = self.sort_params['measurement_cov']
+		self.system_cov = self.sort_params['system_cov']
 
 	def _setup_subscribers(self):
 		rospy.Subscriber(
@@ -72,66 +80,44 @@ class DeepSortTracker:
 			)
 
 	def _initialize_tracker(self):
-		self.tracker = DeepSort(
-			max_age=self.deepsort_params["max_age"],
-			n_init=self.deepsort_params["n_init"],
-			nms_max_overlap=self.deepsort_params["nms_max_overlap"],
-			max_iou_distance=self.deepsort_params["max_iou_distance"],
-			max_cosine_distance=self.deepsort_params["max_cosine_distance"],
-			nn_budget=self.deepsort_params["nn_budget"],
-			override_track_class=self.deepsort_params["override_track_class"],
-			embedder=self.deepsort_params["embedder"],
-			gating_only_position=self.deepsort_params["gating_only_position"],
-			half=self.deepsort_params["half"],
-			bgr=self.deepsort_params["bgr"],
-			embedder_gpu=self.deepsort_params["embedder_gpu"],
-			embedder_model_name=self.deepsort_params["embedder_model_name"],
-			embedder_wts=self.deepsort_params["embedder_wts"],
-			polygon=self.deepsort_params["polygon"],
-			today=self.deepsort_params["today"],
-			_lambda =self.deepsort_params["_lambda"],
-			EWMA_alpha=self.deepsort_params["EWMA_alpha"],
-			std_pos=self.deepsort_params["std_pos"],
-			std_vel=self.deepsort_params["std_vel"],
-		)
+		self.tracker = Sort(self.init_cov, self.measurement_cov, self.system_cov, max_age=self.max_age, min_hits=self.min_hits)
 
 	def _new_bb_calback(self, bounding_boxes):
-		start = time.time()
 		bbs = self._extract_bbs(bounding_boxes.bounding_boxes)
 		frame = self.bridge.imgmsg_to_cv2(bounding_boxes.frame, "bgr8")
 
-		tracks = self.tracker.update_tracks(bbs, frame=frame)
+		if len(bbs) == 0:
+			bbs = np.empty((0, 5))
+		tracks = self.tracker.update(bbs)
 
 		track_list = self._extract_bbs_and_trackid(tracks)
-		
+
 		if self.flag_publish_images_with_tracks:
-			image = draw_detections(frame, track_list)
+			image = draw_detections(frame, tracks)
 			self._publish_image_with_tracks(image)
 
 		if len(track_list) > 0:
 			tracks_msg = self._prepare_tracks_msg(track_list)
 			self._publish_confirmed_tracks(tracks_msg)
 
-		end = time.time()
-		print("Time taken: {:.2f} ms".format((end - start) * 1000))
-
 	def _publish_image_with_tracks(self, image):
 		msg = self.bridge.cv2_to_imgmsg(image, "bgr8")
 		self.image_with_tracks_pub.publish(msg)
 
 	def _extract_bbs(self, bounding_boxes):
+		for t in bounding_boxes:
+			self._add_class_combination(class_id=t.id, class_name=t.Class)
+
 		return convert_bboxes(bounding_boxes)
 
 	def _extract_bbs_and_trackid(self, tracks):
 		result = []
 
 		for track in tracks:
-			# Only publish tracks that are confirmed. State == 2 for confirmed tracks
-			if track.state == 2 and track.time_since_update < 5:
-				bb = track.to_tlbr(orig=False)
-				conf = track.get_det_conf() or 0
-				id = int(track.track_id)
-				class_name = track.det_class
+				bb = track[0:4]
+				conf = track[6]
+				id = track[4]
+				class_name = self.class_combinations[track[5]]
 
 				result.append([bb, conf, id, class_name])
 
@@ -158,6 +144,10 @@ class DeepSortTracker:
 
 		return boundingBoxes
 
+	def _add_class_combination(self, class_id, class_name):
+		self.class_combinations[int(class_id)] = class_name
+
+
 	def _shutdown():
 		rospy.loginfo("Shutting down tracker node")
 
@@ -172,7 +162,7 @@ class DeepSortTracker:
 
 
 def main():
-		Detector = DeepSortTracker()
+		Detector = SortTracker()
 		Detector.start()
 
 if __name__ == "__main__":

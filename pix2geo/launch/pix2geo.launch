@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+
+    <rosparam command="load" file="$(find pix2geo)/config/drone_config.yaml"/>
+
+    <node
+        name="pix2geo"
+        pkg="pix2geo"
+        type="run_pix2geo.py"
+        output="screen">
+        
+        <param name="config_file" value="pix2geo.yaml" />
+
+    </node>
+
+    <node name="compas_meas_throttler" type="throttle" pkg="topic_tools" args="messages /compass_heading 5 compass_heading_t" />
+
+</launch>
