@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+
+    <node
+        name="dataprinter"
+        pkg="test_tools"
+        type="printer_node.py"
+        output="screen">
+        
+        <param name="config_file" value="dataprinter.yaml" />
+
+    </node>
+
+</launch>
