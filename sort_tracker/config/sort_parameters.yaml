@@ -1,8 +1,9 @@
 # Empty field is the same as None
 
-max_age: 30                 # Default: 1
-min_hits: 30                # Default: 3
-iou_threshold: 0.1          # Default: 0.3
-EWMA_alpha: 0.1             # Default: 0.2
-std_pos: 0.5                # Default: 0.5e-2
-std_vel: 6.25e-3            # Default: 6.25e-3
+max_age: 30                                       # Default: 1
+min_hits: 30                                      # Default: 3
+iou_threshold: 0.1                                # Default: 0.3
+EWMA_alpha: 0.5                                   # Default: 0.2
+init_cov: [10, 10, 10, 10, 10000, 10000, 10000]   # Default: [10, 10, 10, 10, 10000, 10000, 10000]
+measurement_cov: [1, 1, 10, 10]                   # Default: [1, 1, 10, 10]   
+system_cov: [1, 1, 1, 1, 0.01, 0.01, 0.001]       # Default: [1, 1, 1, 1, 0.01, 0.01, 0.001] 

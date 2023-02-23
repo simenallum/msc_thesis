@@ -45,6 +45,7 @@ class SortTracker:
 
 	def _initalize_parameters(self):
 		self.bridge = CvBridge()
+		self.class_combinations = {}
 
 		self.flag_publish_images_with_tracks = self.config["settings"]["publish_image_with_tracks"]
 		
@@ -52,6 +53,9 @@ class SortTracker:
 		self.min_hits = self.sort_params['min_hits']
 		self.iou_threshold = self.sort_params['iou_threshold']
 		self.EWMA_alpha = self.sort_params['EWMA_alpha']
+		self.init_cov = self.sort_params['init_cov']
+		self.measurement_cov = self.sort_params['measurement_cov']
+		self.system_cov = self.sort_params['system_cov']
 
 	def _setup_subscribers(self):
 		rospy.Subscriber(
@@ -76,10 +80,9 @@ class SortTracker:
 			)
 
 	def _initialize_tracker(self):
-		self.tracker = Sort(max_age=self.max_age, min_hits=self.min_hits)
+		self.tracker = Sort(self.init_cov, self.measurement_cov, self.system_cov, max_age=self.max_age, min_hits=self.min_hits)
 
 	def _new_bb_calback(self, bounding_boxes):
-		start = time.time()
 		bbs = self._extract_bbs(bounding_boxes.bounding_boxes)
 		frame = self.bridge.imgmsg_to_cv2(bounding_boxes.frame, "bgr8")
 
@@ -87,36 +90,34 @@ class SortTracker:
 			bbs = np.empty((0, 5))
 		tracks = self.tracker.update(bbs)
 
-		# track_list = self._extract_bbs_and_trackid(tracks)
+		track_list = self._extract_bbs_and_trackid(tracks)
 
 		if self.flag_publish_images_with_tracks:
 			image = draw_detections(frame, tracks)
 			self._publish_image_with_tracks(image)
 
-		# if len(track_list) > 0:
-		# 	tracks_msg = self._prepare_tracks_msg(track_list)
-		# 	self._publish_confirmed_tracks(tracks_msg)
-
-		end = time.time()
-		print("Time taken: {:.2f} ms".format((end - start) * 1000))
+		if len(track_list) > 0:
+			tracks_msg = self._prepare_tracks_msg(track_list)
+			self._publish_confirmed_tracks(tracks_msg)
 
 	def _publish_image_with_tracks(self, image):
 		msg = self.bridge.cv2_to_imgmsg(image, "bgr8")
 		self.image_with_tracks_pub.publish(msg)
 
 	def _extract_bbs(self, bounding_boxes):
+		for t in bounding_boxes:
+			self._add_class_combination(class_id=t.id, class_name=t.Class)
+
 		return convert_bboxes(bounding_boxes)
 
 	def _extract_bbs_and_trackid(self, tracks):
 		result = []
 
 		for track in tracks:
-			# Only publish tracks that are confirmed. State == 2 for confirmed tracks
-			if track.state == 2 and track.time_since_update < 5:
-				bb = track.to_tlbr(orig=False)
-				conf = track.get_det_conf() or 0
-				id = int(track.track_id)
-				class_name = track.det_class
+				bb = track[0:4]
+				conf = track[6]
+				id = track[4]
+				class_name = self.class_combinations[track[5]]
 
 				result.append([bb, conf, id, class_name])
 
@@ -142,6 +143,10 @@ class SortTracker:
 			boundingBoxes.bounding_boxes.append(boundingBox)
 
 		return boundingBoxes
+
+	def _add_class_combination(self, class_id, class_name):
+		self.class_combinations[int(class_id)] = class_name
+
 
 	def _shutdown():
 		rospy.loginfo("Shutting down tracker node")

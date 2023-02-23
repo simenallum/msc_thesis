@@ -102,38 +102,22 @@ class KalmanBoxTracker(object):
   This class represents the internal state of individual tracked objects observed as bbox.
   """
   count = 0
-  def __init__(self,bbox,cid, EWMA_alpha=0.1):
+  def __init__(self,bbox,cid, init_cov, measurement_cov, system_cov, EWMA_alpha=0.1):
     """
     Initialises a tracker using initial bounding box.
     """
+    dt = 1.0
+
     #define constant velocity model
     self.kf = KalmanFilter(dim_x=7, dim_z=4)
-    self.kf.F = np.array([[1,0,0,0,1,0,0],[0,1,0,0,0,1,0],[0,0,1,0,0,0,1],[0,0,0,1,0,0,0],  [0,0,0,0,1,0,0],[0,0,0,0,0,1,0],[0,0,0,0,0,0,1]])
+    self.kf.F = np.array([[1,0,0,0,1,0,0],[0,1,0,0,0,1,0],[0,0,1,0,0,0,1],[0,0,0,1,0,0,0],  [0,0,0,0,dt,0,0],[0,0,0,0,0,dt,0],[0,0,0,0,0,0,dt]])
     self.kf.H = np.array([[1,0,0,0,0,0,0],[0,1,0,0,0,0,0],[0,0,1,0,0,0,0],[0,0,0,1,0,0,0]])
 
-    self.kf.x[:4] = convert_bbox_to_z(bbox)
+    self.kf.x[:4] = convert_bbox_to_z(bbox) # Velocities are initialized to zero mean
 
-    self.kf.R[2:,2:] *= 10.
-    self.kf.P[4:,4:] *= 1000. #give high uncertainty to the unobservable initial velocities
-    self.kf.P *= 10.
-    # self.kf.Q[-1,-1] *= 0.01
-    # self.kf.Q[4:,4:] *= 0.01
-
-
-    self._std_weight_position = 0.5
-    self._std_weight_velocity = 1        
-
-    std = [
-            2 * self._std_weight_position * (self.kf.x[2]).item(),
-            2 * self._std_weight_position * (self.kf.x[2]).item(),
-            2 * self._std_weight_position * (self.kf.x[2]).item(),
-            1e-2,
-            10 * self._std_weight_velocity * (self.kf.x[2]).item(),
-            10 * self._std_weight_velocity * (self.kf.x[2]).item(),
-            1e-5
-        ]
-
-    self.kf.Q = np.diag(np.square(std))
+    self.kf.R = np.diag(measurement_cov)
+    self.kf.P = np.diag(init_cov)
+    self.kf.Q = np.diag(system_cov)
 
     self.time_since_update = 0
     self.id = KalmanBoxTracker.count
@@ -156,13 +140,13 @@ class KalmanBoxTracker(object):
     self.cid = cid
     self.hit_streak += 1
     self.kf.update(convert_bbox_to_z(bbox))
-    self.kf.x[:4] = convert_bbox_to_z(bbox)
+    self.kf.x[:4] = convert_bbox_to_z(bbox) # Setting the state vector to the measurement. 
 
   def predict(self):
     """
     Advances the state vector and returns the predicted bounding box estimate.
     """
-    if((self.kf.x[6]+self.kf.x[2])<=0):
+    if((self.kf.x[6]+self.kf.x[2])<=0): # Added in order to not get BBs with negative scale (area) after prediction
       self.kf.x[6] *= 0.0
     self.kf.predict()
     self.age += 1
@@ -225,7 +209,7 @@ def associate_detections_to_trackers(detections,trackers,iou_threshold = 0.3):
 
 
 class Sort(object):
-  def __init__(self, max_age=1, min_hits=30, iou_threshold=0.3, EWMA_alpha=0.1):
+  def __init__(self, init_cov, measurement_cov, system_cov, max_age=1, min_hits=30, iou_threshold=0.3, EWMA_alpha=0.1):
     """
     Sets key parameters for SORT
     """
@@ -235,6 +219,9 @@ class Sort(object):
     self.trackers = []
     self.EWMA_alpha = EWMA_alpha
     self.frame_count = 0
+    self.init_cov = init_cov
+    self.measurement_cov = measurement_cov
+    self.system_cov = system_cov
 
   def update(self, dets=np.empty((0, 6))):
     """
@@ -267,7 +254,7 @@ class Sort(object):
 
     # create and initialise new trackers for unmatched detections
     for i in unmatched_dets:
-        trk = KalmanBoxTracker(dets[i,:-1],dets[i,-1], EWMA_alpha=self.EWMA_alpha)
+        trk = KalmanBoxTracker(dets[i,:-1],dets[i,-1], self.init_cov, self.measurement_cov, self.system_cov, EWMA_alpha=self.EWMA_alpha)
         self.trackers.append(trk)
     i = len(self.trackers)
     for trk in reversed(self.trackers):
