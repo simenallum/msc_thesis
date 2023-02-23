@@ -47,6 +47,11 @@ class SortTracker:
 		self.bridge = CvBridge()
 
 		self.flag_publish_images_with_tracks = self.config["settings"]["publish_image_with_tracks"]
+		
+		self.max_age = self.sort_params['max_age']
+		self.min_hits = self.sort_params['min_hits']
+		self.iou_threshold = self.sort_params['iou_threshold']
+		self.EWMA_alpha = self.sort_params['EWMA_alpha']
 
 	def _setup_subscribers(self):
 		rospy.Subscriber(
@@ -71,7 +76,7 @@ class SortTracker:
 			)
 
 	def _initialize_tracker(self):
-		self.tracker = Sort()
+		self.tracker = Sort(max_age=self.max_age, min_hits=self.min_hits)
 
 	def _new_bb_calback(self, bounding_boxes):
 		start = time.time()

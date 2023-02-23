@@ -1,22 +1,8 @@
 # Empty field is the same as None
 
-max_age: 30                 # Default: 30
-n_init: 10                  # Default: 3
-nms_max_overlap: 0.7        # Default: 1.0
-max_iou_distance: 0.7       # Default: 0.7
-max_cosine_distance: 0.2    # Default: 0.2
-nn_budget:                  # Default: None
-override_track_class:       # Default: None
-embedder: "clip_ViT-B/16"   # Default: "mobilenet"
-gating_only_position: True  # Default: False
-half: True                  # Default: True
-bgr: True                   # Default: True
-embedder_gpu: True          # Default: True
-embedder_model_name:        # Default: None
-embedder_wts:               # Default: None
-polygon: False              # Default: False
-today:                      # Default: None
-_lambda : 0.1               # Default: 0.0
+max_age: 30                 # Default: 1
+min_hits: 30                # Default: 3
+iou_threshold: 0.1          # Default: 0.3
 EWMA_alpha: 0.1             # Default: 0.2
 std_pos: 0.5                # Default: 0.5e-2
 std_vel: 6.25e-3            # Default: 6.25e-3

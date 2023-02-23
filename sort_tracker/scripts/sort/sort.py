@@ -111,13 +111,30 @@ class KalmanBoxTracker(object):
     self.kf.F = np.array([[1,0,0,0,1,0,0],[0,1,0,0,0,1,0],[0,0,1,0,0,0,1],[0,0,0,1,0,0,0],  [0,0,0,0,1,0,0],[0,0,0,0,0,1,0],[0,0,0,0,0,0,1]])
     self.kf.H = np.array([[1,0,0,0,0,0,0],[0,1,0,0,0,0,0],[0,0,1,0,0,0,0],[0,0,0,1,0,0,0]])
 
+    self.kf.x[:4] = convert_bbox_to_z(bbox)
+
     self.kf.R[2:,2:] *= 10.
     self.kf.P[4:,4:] *= 1000. #give high uncertainty to the unobservable initial velocities
     self.kf.P *= 10.
-    self.kf.Q[-1,-1] *= 0.01
-    self.kf.Q[4:,4:] *= 0.01
+    # self.kf.Q[-1,-1] *= 0.01
+    # self.kf.Q[4:,4:] *= 0.01
 
-    self.kf.x[:4] = convert_bbox_to_z(bbox)
+
+    self._std_weight_position = 0.5
+    self._std_weight_velocity = 1        
+
+    std = [
+            2 * self._std_weight_position * (self.kf.x[2]).item(),
+            2 * self._std_weight_position * (self.kf.x[2]).item(),
+            2 * self._std_weight_position * (self.kf.x[2]).item(),
+            1e-2,
+            10 * self._std_weight_velocity * (self.kf.x[2]).item(),
+            10 * self._std_weight_velocity * (self.kf.x[2]).item(),
+            1e-5
+        ]
+
+    self.kf.Q = np.diag(np.square(std))
+
     self.time_since_update = 0
     self.id = KalmanBoxTracker.count
     KalmanBoxTracker.count += 1
@@ -208,7 +225,7 @@ def associate_detections_to_trackers(detections,trackers,iou_threshold = 0.3):
 
 
 class Sort(object):
-  def __init__(self, max_age=100, min_hits=30, iou_threshold=0.3):
+  def __init__(self, max_age=1, min_hits=30, iou_threshold=0.3, EWMA_alpha=0.1):
     """
     Sets key parameters for SORT
     """
@@ -216,6 +233,7 @@ class Sort(object):
     self.min_hits = min_hits
     self.iou_threshold = iou_threshold
     self.trackers = []
+    self.EWMA_alpha = EWMA_alpha
     self.frame_count = 0
 
   def update(self, dets=np.empty((0, 6))):
@@ -249,12 +267,12 @@ class Sort(object):
 
     # create and initialise new trackers for unmatched detections
     for i in unmatched_dets:
-        trk = KalmanBoxTracker(dets[i,:-1],dets[i,-1])
+        trk = KalmanBoxTracker(dets[i,:-1],dets[i,-1], EWMA_alpha=self.EWMA_alpha)
         self.trackers.append(trk)
     i = len(self.trackers)
     for trk in reversed(self.trackers):
         d = trk.get_state()[0]
-        if (trk.time_since_update < 1) and (trk.hit_streak >= self.min_hits or self.frame_count <= self.min_hits):
+        if (trk.time_since_update < self.max_age) and (trk.hits >= self.min_hits or self.frame_count <= self.min_hits):
           ret.append([d[0], d[1], d[2], d[3], trk.id+1, trk.cid, trk.conf])
         i -= 1
         # remove dead tracklet
