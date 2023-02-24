@@ -1,0 +1,7 @@
+topics:
+  input:
+    GT_pose: "/qualisys/Anafi/pose"
+    anafi_rpy: "anafi/rpy"
+    anafi_pose: "anafi/pose"
+
+
