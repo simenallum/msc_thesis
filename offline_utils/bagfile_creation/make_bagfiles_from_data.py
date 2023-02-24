@@ -4,10 +4,12 @@ import rospy
 import cv2
 from datetime import datetime
 import time
+import numpy as np
+
 
 from std_msgs.msg import Float32
 from sensor_msgs.msg import NavSatFix
-from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import TwistStamped, Vector3Stamped
 from cv_bridge import CvBridge
 from sensor_msgs.msg import NavSatFix
 from tqdm import tqdm
@@ -52,8 +54,9 @@ def write_to_bagfile(json_file, image_folder, video_name):
                 bag.write('/gimbal_pitch', pitch_msg, t=msg.header.stamp)
 
                 # Write compass_heading
-                heading_msg = Float32()
-                heading_msg.data = image['meta']['compass_heading']
+                heading_msg = Vector3Stamped()
+                heading_msg.header.stamp = msg.header.stamp
+                heading_msg.vector.z = np.deg2rad(image['meta']['compass_heading'])
                 bag.write('/compass_heading', heading_msg, t=msg.header.stamp)
 
                 # Write gimbal_heading
