@@ -34,7 +34,12 @@ class DataPrinter:
 		self._setup_subscribers()
 
 	def _initalize_parameters(self):
-		pass
+		self.timer = rospy.Timer(rospy.Duration(0.5), self.timer_callback)
+
+		self.last_gt_quat = [0, 0, 0]
+		self.last_anafi_quat = [0, 0, 0]
+		self.last_anafi_rpy = [0, 0, 0]
+
 
 	def _setup_subscribers(self):
 		rospy.Subscriber(
@@ -50,10 +55,18 @@ class DataPrinter:
 		)
 
 		rospy.Subscriber(
-			self.config["topics"]["input"]["anafi_pose"], 
+			self.config["topics"]["input"]["anafi_rpy"], 
 			Vector3Stamped, 
 			self._new_anafi_rpy_cb
 		)
+
+	def timer_callback(self, timer):
+		print("-------------------------")
+		print(f"GT quaternions: {self.last_gt_quat[0]}, {self.last_gt_quat[1]}, {self.last_gt_quat[2]}")
+		print(f"Anafi quaternions: {self.last_anafi_quat[0]}, {self.last_anafi_quat[1]}, {self.last_anafi_quat[2]}")
+		print(f"Anafi rpy: {self.last_anafi_rpy[0]}, {self.last_anafi_rpy[1]}, {self.last_anafi_rpy[2]}")
+		print("-------------------------")
+
 
 	def _new_gt_pose_cb(self, msg):
 		quat = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
@@ -61,7 +74,7 @@ class DataPrinter:
 		rot = Rotation.from_quat(quat)
 		rot_euler = rot.as_euler('xyz', degrees=True)
 
-		print(f"GT quaternions: {rot_euler[0]}, {rot_euler[1]}, {rot_euler[2]} \n")
+		self.last_gt_quat = [rot_euler[0], rot_euler[1] ,rot_euler[2]]
 
 	def _new_anafi_pose_cb(self, msg):
 		quat = [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w]
@@ -69,10 +82,10 @@ class DataPrinter:
 		rot = Rotation.from_quat(quat)
 		rot_euler = rot.as_euler('xyz', degrees=True)
 
-		print(f"Anafi quaternions: {rot_euler[0]}, {rot_euler[1]}, {rot_euler[2]} \n")
+		self.last_anafi_quat = [rot_euler[0], rot_euler[1] ,rot_euler[2]]
 
 	def _new_anafi_rpy_cb(self, msg):
-		print(f"Anafi rpy: {np.rad2deg(msg.vector.x)}, {np.rad2deg(msg.vector.y)}, {np.rad2deg(msg.vector.z)} \n")
+		self.last_anafi_rpy = [np.rad2deg(msg.vector.x), np.rad2deg(msg.vector.y), np.rad2deg(msg.vector.z)]
 
 
 	def _shutdown():

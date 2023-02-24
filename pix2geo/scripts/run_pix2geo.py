@@ -4,10 +4,8 @@ import rospy
 import os
 import yaml
 import sys
-from cv_bridge import CvBridge
-import sensor_msgs.msg
-from std_msgs.msg import Float32
-from geometry_msgs.msg import PointStamped
+import numpy as np
+from geometry_msgs.msg import PointStamped, Vector3Stamped
 import pix2geo_utils.utils 
 
 '''
@@ -77,8 +75,8 @@ class Pix2Geo:
 		)
 
 		rospy.Subscriber(
-			self.config["topics"]["input"]["compass"], 
-			Float32, 
+			self.config["topics"]["input"]["rpy"], 
+			Vector3Stamped, 
 			self._new_compass_meas_callback
 		)
 
@@ -116,14 +114,14 @@ class Pix2Geo:
 			detection_world_frame = pix2geo_utils.utils.transform_point_cam_to_world(
 				detection_camera_frame,
 				translation=self._last_gnss_meas,
-				yaw_deg=self._last_compass_meas
+				yaw_deg=np.rad2deg(self._last_compass_meas)
 			)
 		
 
 			self._publish_track_world_coordinate(detection_world_frame, track_id, track_probability, track_class)
 
 	def _new_compass_meas_callback(self, measurement):
-		self._last_compass_meas = measurement.data
+		self._last_compass_meas = measurement.vector.z
 
 	def _new_NED_gnss_meas_callback(self, measurment):
 		self._last_gnss_meas = [measurment.point.x, measurment.point.y, measurment.point.z]

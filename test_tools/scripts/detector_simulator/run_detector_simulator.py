@@ -91,7 +91,7 @@ class DetectorSimulator:
 
 				self._publish_detected_image(detection_image)
 
-			msg = self._prepare_boundingbox_msg(bbs, confidence, ids, class_names)
+			msg = self._prepare_boundingbox_msg(bbs, confidence, ids, class_names, image)
 			self._publish_detected_boundingboxes(msg)
 
 
@@ -99,7 +99,7 @@ class DetectorSimulator:
 		msg = self.bridge.cv2_to_imgmsg(image, "bgr8")
 		self.detection_image_pub.publish(msg)
 
-	def _prepare_boundingbox_msg(self, boxes, confidence, classes, class_names):
+	def _prepare_boundingbox_msg(self, boxes, confidence, classes, class_names, image):
 		boundingBoxes = BoundingBoxes()
 		boundingBoxes.header.stamp = rospy.Time.now()
 
@@ -114,6 +114,8 @@ class DetectorSimulator:
 			boundingBox.Class = class_names[i]
 
 			boundingBoxes.bounding_boxes.append(boundingBox)
+
+		boundingBoxes.frame = self.bridge.cv2_to_imgmsg(image, "bgr8")
 
 		return boundingBoxes
 

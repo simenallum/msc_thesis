@@ -2,8 +2,8 @@ topics:
   input:
     image: "/anafi/image"
   output:
-    boxes: "/yolo/platform/boxes"
-    detectionImage: "/yolo/platform/detectionImage"
+    boxes: "/yolo/search/boxes"
+    detectionImage: "/yolo/search/detectionImage"
 
 publish_detected_image: True
 
