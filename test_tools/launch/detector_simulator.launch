@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+
+    <node
+        name="gnss2ned"
+        pkg="test_tools"
+        type="run_detector_simulator.py"
+        output="screen">
+        
+        <param name="config_file" value="detector_simulator.yaml" />
+
+    </node>
+
+</launch>

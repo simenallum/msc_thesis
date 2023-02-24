@@ -61,9 +61,9 @@ def calculate_detection_location(camera_fov, detection_pixels, drone_position, i
 	y_displacement_degrees_from_center = y_resolution_degrees_per_pixel * y_displacement_degrees
 
 	# Transform the coordinates to the camera coordinate system
-	x_camera = (drone_position[2] * math.tan(math.radians(x_displacement_degrees_from_center)))
-	y_camera = (drone_position[2] * math.tan(math.radians(y_displacement_degrees_from_center)))
-	z_camera = drone_position[2]
+	x_camera = -(drone_position[2] * math.tan(math.radians(x_displacement_degrees_from_center)))
+	y_camera = -(drone_position[2] * math.tan(math.radians(y_displacement_degrees_from_center)))
+	z_camera = -drone_position[2]
 
 	return (x_camera, y_camera, z_camera)
 
@@ -78,7 +78,7 @@ def transform_point_cam_to_world(point, translation, yaw_deg):
 	
 	# Apply the translation and rotation to the point
 	rotated_point = tot_rot.apply(point)
-	point_new = rotated_point + [translation[0], translation[1], -translation[2]] # Negative z due to NED frame
+	point_new = rotated_point + [translation[0], translation[1], translation[2]]
 	return point_new
 
 

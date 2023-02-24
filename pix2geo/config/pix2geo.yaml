@@ -2,6 +2,6 @@ topics:
   input:
     tracks: "/search/tracks"
     rpy: "/anafi/rpy"
-    NED_gnss: "/NED_position_drone_t"
+    NED_gnss: "/anafi/ned_pos_from_gnss"
   output:
     track_world_coordinate: "/search/tracks/world_coordinates"

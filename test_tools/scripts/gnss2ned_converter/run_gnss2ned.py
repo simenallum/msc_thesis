@@ -22,7 +22,7 @@ class GNSS2NED:
 			config_file = rospy.get_param("~config_file")
 
 		try:
-			with open(f"{script_dir}/../config/{config_file}") as f:
+			with open(f"{script_dir}/../../config/{config_file}") as f:
 				self.config = yaml.safe_load(f)
 		except Exception as e:
 				rospy.logerr(f"Failed to load config: {e}")
