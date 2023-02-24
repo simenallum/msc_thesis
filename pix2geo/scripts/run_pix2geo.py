@@ -5,8 +5,10 @@ import os
 import yaml
 import sys
 import numpy as np
-from geometry_msgs.msg import PointStamped, Vector3Stamped
+from geometry_msgs.msg import PointStamped, Vector3Stamped, PoseStamped
 import pix2geo_utils.utils 
+from scipy.spatial.transform import Rotation
+
 
 '''
 This  node will need to have access to the following data:
@@ -76,7 +78,7 @@ class Pix2Geo:
 
 		rospy.Subscriber(
 			self.config["topics"]["input"]["rpy"], 
-			Vector3Stamped, 
+			PoseStamped, 
 			self._new_compass_meas_callback
 		)
 
@@ -111,6 +113,7 @@ class Pix2Geo:
 				img_width=self._img_width
 			)
 
+			
 			detection_world_frame = pix2geo_utils.utils.transform_point_cam_to_world(
 				detection_camera_frame,
 				translation=self._last_gnss_meas,
@@ -121,7 +124,16 @@ class Pix2Geo:
 			self._publish_track_world_coordinate(detection_world_frame, track_id, track_probability, track_class)
 
 	def _new_compass_meas_callback(self, measurement):
-		self._last_compass_meas = measurement.vector.z
+		quaternions=[
+			measurement.pose.orientation.x,
+			measurement.pose.orientation.y,
+			measurement.pose.orientation.z,
+			measurement.pose.orientation.w
+		]
+		
+		rot = Rotation.from_quat(quaternions)
+		(roll, pitch, yaw) = rot.as_euler('xyz', degrees=False)
+		self._last_compass_meas = yaw
 
 	def _new_NED_gnss_meas_callback(self, measurment):
 		self._last_gnss_meas = [measurment.point.x, measurment.point.y, measurment.point.z]

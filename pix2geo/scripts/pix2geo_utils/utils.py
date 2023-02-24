@@ -68,9 +68,7 @@ def calculate_detection_location(camera_fov, detection_pixels, drone_position, i
 	return (x_camera, y_camera, z_camera)
 
 def transform_point_cam_to_world(point, translation, yaw_deg):
-	# Convert yaw angle to radians
-	yaw_rad = math.radians(yaw_deg)
-
+	# rotated_point = np.array([point[0], point[1], point[2]])
 	fixed_rotation = Rotation.from_euler('z', 90, degrees=True)
 	yaw_rotation = Rotation.from_euler('z', yaw_deg, degrees=True)
 

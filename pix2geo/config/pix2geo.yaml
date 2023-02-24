@@ -1,7 +1,7 @@
 topics:
   input:
     tracks: "/search/tracks"
-    rpy: "/anafi/rpy"
+    rpy: "/anafi/pose"
     NED_gnss: "/anafi/ned_pos_from_gnss"
   output:
     track_world_coordinate: "/search/tracks/world_coordinates"
