@@ -81,14 +81,14 @@ class Pix2Geo:
 		)
 
 		rospy.Subscriber(
-			self.config["topics"]["input"]["rpy"], 
+			self.config["topics"]["input"]["pose"], 
 			PoseStamped, 
 			self._new_compass_meas_callback
 		)
 
 		rospy.Subscriber(
 			self.config["topics"]["input"]["NED_gnss"], 
-			PoseStamped, 
+			PointStamped, 
 			self._new_NED_gnss_meas_callback
 		)
 
@@ -163,7 +163,7 @@ class Pix2Geo:
 		self._last_compass_meas = yaw
 
 	def _new_NED_gnss_meas_callback(self, measurment):
-		self._last_gnss_meas = [measurment.pose.position.x, measurment.pose.position.y, measurment.pose.position.z]
+		self._last_gnss_meas = [measurment.point.x, measurment.point.y, measurment.point.z]
 
 	def _extract_bbs(self, bboxes):
 		result = []

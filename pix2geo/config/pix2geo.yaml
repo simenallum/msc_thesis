@@ -1,8 +1,8 @@
 topics:
   input:
     tracks: "/search/tracks"
-    rpy: "/qualisys/Anafi/pose"
-    NED_gnss: "/qualisys/Anafi/pose"
+    pose: "/anafi/pose"
+    NED_gnss: "/anafi/ned_pos_from_gnss"
   output:
     track_world_coordinate: "/search/tracks/world_coordinates"
     track_camera_coordinate_triangulate: "/search/tracks/camera_coordinates_tria"
