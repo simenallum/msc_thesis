@@ -1,0 +1,11 @@
+{
+  "epochs": 100,
+  "batch_size": 20,
+  "learning_rate": 1e-8,
+  "load": "",
+  "scale": 0.5,
+  "validation": 20,
+  "amp": true,
+  "bilinear": "",
+  "classes": 1
+}
