@@ -1,0 +1,16 @@
+offline_map: 
+  map_resolution_px:
+    width: 2000
+    height: 2000
+  map_radius: 100
+  shapefile_path: "/home/simenallum/catkin_ws/src/msc_thesis/water_segmentation/data/trondheim_water/trondheim_water.shp"
+
+topics:
+  input:
+    gnss: "/anafi/gnss_location"
+    drone_pose: "/anafi/pose"
+  output: 
+    water_mask: "/segmentation/offline_mask"
+
+services:
+  make_mask: make_offline_mask

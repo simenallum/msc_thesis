@@ -1,0 +1,11 @@
+topics:
+  input:
+    image: "/anafi/images_t"
+  output:
+    water_mask: "/segmentation/dl_mask"
+
+model_settings:
+  model_path: "/home/simenallum/catkin_ws/src/msc_thesis/water_segmentation/dl_models/best_model.pth"
+  classes: 1
+  bilinear: False
+  

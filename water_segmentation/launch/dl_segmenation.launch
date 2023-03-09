@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+
+    <node
+        name="dl_segmentation"
+        pkg="water_segmentation"
+        type="run_dl_segmentation.py"
+        output="screen">
+        
+        <param name="config_file" value="dl_segmentation.yaml" />
+
+    </node>
+
+</launch>
