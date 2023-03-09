@@ -105,10 +105,10 @@ class Map_segmentation:
 	
 	def _new_drone_pose_callback(self, pose_msg):
 		quaternions=[
-			pose_msg.quaternion.x,
-			pose_msg.quaternion.y,
-			pose_msg.quaternion.z,
-			pose_msg.quaternion.w
+			pose_msg.pose.orientation.x,
+			pose_msg.pose.orientation.y,
+			pose_msg.pose.orientation.z,
+			pose_msg.pose.orientation.w
 		]
 		
 		rot = Rotation.from_quat(quaternions)
