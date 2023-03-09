@@ -21,11 +21,11 @@ from utils.dice_score import dice_loss
 import datetime
 
 
-dir_img = Path('/home/msccomputer/Desktop/Water_dataset/Images')
-dir_mask = Path('/home/msccomputer/Desktop/Water_dataset/Annotations')
-dir_checkpoint = Path('/home/msccomputer/catkin_ws/src/msc_thesis/train_segmentation/Pytorch-UNet/checkpoints/')
+dir_img = Path('/home/simenallum/Desktop/SWED_images/images')
+dir_mask = Path('/home/simenallum/Desktop/SWED_images/labels')
+dir_checkpoint = Path('/home/simenallum/catkin_ws/src/msc_thesis/train_segmentation/checkpoints/')
 
-dir_best_model = '/home/msccomputer/catkin_ws/src/msc_thesis/train_segmentation/BEST_MODELS/'
+dir_best_model = '/home/simenallum/catkin_ws/src/msc_thesis/train_segmentation/BEST_MODELS/'
 dir_best_model = Path(dir_best_model + datetime.datetime.now().strftime("%d-%m-%Y-%H-%M"))
 
 def train_model(
@@ -44,31 +44,16 @@ def train_model(
         gradient_clipping: float = 1.0,
         early_stopping_patience: int = 5
 ):
-    # # 1. Create dataset
-    # try:
-    #     dataset = CarvanaDataset(dir_img, dir_mask, img_scale)
-    # except (AssertionError, RuntimeError, IndexError):
-    #     dataset = BasicDataset(dir_img, dir_mask, img_scale)
+    # 1. Create dataset
+    try:
+        dataset = CarvanaDataset(dir_img, dir_mask, img_scale)
+    except (AssertionError, RuntimeError, IndexError):
+        dataset = BasicDataset(dir_img, dir_mask, img_scale)
 
-    # # 2. Split into train / validation partitions
-    # n_val = int(len(dataset) * val_percent)
-    # n_train = len(dataset) - n_val
-    # train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
-
-    DATA_DIR = '/home/msccomputer/Desktop/Water_dataset'
-
-    x_train_dir = os.path.join(DATA_DIR, 'train2/images')
-    y_train_dir = os.path.join(DATA_DIR, 'train2/annotations')
-
-    x_valid_dir = os.path.join(DATA_DIR, 'val/images')
-    y_valid_dir = os.path.join(DATA_DIR, 'val/annotations')
-
-    train_set = BasicDataset(x_train_dir, y_train_dir, img_scale)
-    val_set = BasicDataset(x_valid_dir, y_valid_dir, img_scale)
-
-    n_val = int(len(val_set))
-    n_train = int(len(train_set))
-
+    # 2. Split into train / validation partitions
+    n_val = int(len(dataset) * val_percent)
+    n_train = len(dataset) - n_val
+    train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
     
 
     # 3. Create data loaders
@@ -77,7 +62,7 @@ def train_model(
     val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args)
 
     # (Initialize logging)
-    experiment = wandb.init(project='U-Net', resume='allow', anonymous='must')
+    experiment = wandb.init(project='U-Net-Gaofen-1-images', resume='allow', anonymous='must')
     experiment.config.update(
         dict(epochs=epochs, batch_size=batch_size, learning_rate=learning_rate,
              val_percent=val_percent, save_checkpoint=save_checkpoint, img_scale=img_scale, amp=amp)
@@ -204,7 +189,7 @@ def train_model(
         if save_checkpoint:
             Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
             state_dict = model.state_dict()
-            state_dict['mask_values'] = train_set.mask_values
+            state_dict['mask_values'] = dataset.mask_values
             torch.save(state_dict, str(dir_checkpoint / 'checkpoint_epoch{}.pth'.format(epoch)))
             logging.info(f'Checkpoint {epoch} saved!')
 
@@ -213,7 +198,7 @@ def train_model(
               no_val_score_change = 0
               Path(dir_best_model).mkdir(parents=True, exist_ok=True)
               state_dict = model.state_dict()
-              state_dict['mask_values'] = train_set.mask_values
+              state_dict['mask_values'] = dataset.mask_values
               torch.save(state_dict, str(dir_best_model / 'best_model.pth'))
               logging.info(f'New best model saved after epoch number: {epoch}!')
 

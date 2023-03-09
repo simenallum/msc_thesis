@@ -16,7 +16,7 @@ BILINEAR=$(echo $CONFIG | jq -r '.bilinear')
 CLASSES=$(echo $CONFIG | jq -r '.classes')
 
 # Construct the command string
-CMD="python3 Pytorch-UNet/train.py"
+CMD="python3 Pytorch-UNet-offline/train.py"
 if [ ! -z "$EPOCHS" ]; then CMD+=" --epochs $EPOCHS"; fi
 if [ ! -z "$BATCH_SIZE" ]; then CMD+=" --batch-size $BATCH_SIZE"; fi
 if [ ! -z "$LEARNING_RATE" ]; then CMD+=" --learning-rate $LEARNING_RATE"; fi

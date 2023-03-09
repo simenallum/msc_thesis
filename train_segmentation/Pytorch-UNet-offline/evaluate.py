@@ -1,6 +1,13 @@
 import torch
 import torch.nn.functional as F
 from tqdm import tqdm
+from unet import UNet
+import argparse
+import logging
+from pathlib import Path
+from utils.data_loading import BasicDataset
+import os
+from torch.utils.data import DataLoader
 
 from utils.dice_score import multiclass_dice_coeff, dice_coeff
 
@@ -38,3 +45,44 @@ def evaluate(net, dataloader, device, amp):
 
     net.train()
     return dice_score / max(num_val_batches, 1)
+
+
+def get_args():
+    parser = argparse.ArgumentParser(description='Evaluate model on test data')    
+    
+    parser.add_argument('--model', '-m', default='MODEL.pth', metavar='FILE',
+                        help='Specify the file in which the model is stored')
+    
+    return parser.parse_args()
+
+if __name__ == '__main__':
+    args = get_args()
+
+    dir_img = Path('/home/simenallum/Desktop/SWED_images/test/images')
+    dir_mask = Path('/home/simenallum/Desktop/SWED_images/test/labels')
+
+    n_classes = 1
+    bilinear = False
+    img_scale = 0.5
+    batch_size = 4
+
+    net = UNet(n_channels=3, n_classes=n_classes, bilinear=bilinear)
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    net.to(device=device)
+    state_dict = torch.load(args.model, map_location=device)
+    mask_values = state_dict.pop('mask_values', [0, 1])
+    net.load_state_dict(state_dict)
+
+    logging.info('Model loaded!')
+
+    dataset = BasicDataset(dir_img, dir_mask, img_scale)
+    loader_args = dict(batch_size=batch_size, num_workers=os.cpu_count(), pin_memory=True)
+    test_loader = DataLoader(dataset, shuffle=True, **loader_args)
+
+    val_score = evaluate(net, test_loader, device, amp=True)
+
+    print(val_score)
+
+

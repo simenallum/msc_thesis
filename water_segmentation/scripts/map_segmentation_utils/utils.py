@@ -17,7 +17,6 @@ def calculate_gnss_bbox(origin: tuple, radius: float) -> gpd.GeoDataFrame:
     # Calculate the bounding box using the center point and radius
     bounds = ox.utils_geo.bbox_from_point(origin, dist=radius)
     north, south, east, west = bounds
-    print("polygon from bbox creation: ", bounds)
 
     # Create a polygon geometry from the bounding box coordinates
     bbox_polygon = Polygon([(west, north), (east, north), (east, south), (west, south)])
@@ -155,6 +154,14 @@ def scale_mask(mask: np.array, out_resolution: tuple) -> np.array:
 
     # Convert the image to integer type
     return resized_image.astype('uint8')
+
+def mask_to_image(mask: np.ndarray, mask_values):
+    out = np.zeros((mask.shape[-2], mask.shape[-1]), dtype=np.uint8)
+
+    for i, v in enumerate(mask_values):
+        out[mask == i] = v
+
+    return out
 
 
 if __name__ == '__main__':
