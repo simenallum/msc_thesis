@@ -1,0 +1,7 @@
+# Request
+bool image_request
+
+# Response
+---
+sensor_msgs/Image image_data
+string message

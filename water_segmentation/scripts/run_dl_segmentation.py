@@ -12,6 +12,7 @@ import numpy as np
 from PIL import Image
 from torchvision import transforms
 
+from water_segmentation.srv import sendMask, sendMaskResponse
 import sensor_msgs.msg
 from Pytorch_UNet.unet import UNet
 from Pytorch_UNet.predict import predict_img, mask_to_image
@@ -39,6 +40,8 @@ class DL_segmentation:
 		self._setup_publishers()
 		self._setup_subscribers()
 		self._initialize_model()
+		self._initalize_services()
+
 
 	def _initalize_parameters(self):
 		self.bridge = CvBridge()
@@ -47,6 +50,7 @@ class DL_segmentation:
 		self.classes = self.config['model_settings']['classes']
 		self.bilinear = self.config['model_settings']['bilinear']
 
+		self._last_image = None
 
 	def _setup_subscribers(self):
 		rospy.Subscriber(
@@ -73,36 +77,50 @@ class DL_segmentation:
 
 		rospy.loginfo("Model loaded!")
 
+	def _initalize_services(self):
+		self._srv_make_mask = rospy.Service(
+			self.config["services"]["make_mask"],
+			sendMask, 
+			self._handle_create_mask
+		)
+
 	def _new_image_cb(self, image_msg):
 		image_raw = self.bridge.imgmsg_to_cv2(image_msg, "bgr8")
 
-		image = Image.fromarray(np.uint8(image_raw)).convert('RGB')
-
+		self._last_image = Image.fromarray(np.uint8(image_raw)).convert('RGB')
+	
+	def _handle_create_mask(self, req):
 		# Record start time
 		start_time = time.time()
 
 		# Call predict_img() function
 		mask = predict_img(
 			net=self.model,
-			full_img=image,
+			full_img=self._last_image,
 			scale_factor=0.5,
 			out_threshold=0.5,
 			device=self.device
 		)
 
 		# Record end time
-		print("Time taken: {:.2f} seconds".format(time.time() - start_time))
+		rospy.logdebug("Time taken: {:.2f} seconds".format(time.time() - start_time))
 
 		mask_image = mask_to_image(mask, self.mask_values)
 
 		self._publish_mask_image(mask_image)
-	
+
+		# Make responce for service call
+		res = sendMaskResponse()
+		res.message = "Mask created!"
+		res.image_data = self.bridge.cv2_to_imgmsg(mask_image, "mono8")
+		return res
+
+
 	def _publish_mask_image(self, mask):
 		mask_msg = self.bridge.cv2_to_imgmsg(mask, "mono8")
 		self.mask_pub.publish(mask_msg)
 
-
-	def _shutdown():
+	def _shutdown(self):
 		rospy.loginfo("Shutting down Deep Learning based Segmentation node")
 
 	def start(self):

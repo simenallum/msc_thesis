@@ -1,6 +1,6 @@
 topics:
   input:
-    image: "/anafi/images_t"
+    image: "/image"
   output:
     water_mask: "/segmentation/dl_mask"
 
@@ -9,3 +9,5 @@ model_settings:
   classes: 1
   bilinear: False
   
+services:
+  make_mask: make_dl_mask
