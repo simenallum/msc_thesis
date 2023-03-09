@@ -17,6 +17,9 @@ def evaluate(net, dataloader, device, amp):
     net.eval()
     num_val_batches = len(dataloader)
     dice_score = 0
+    img_ret = None
+    mask_true_ret = None
+    mask_pred_ret = None
 
     # iterate over the validation set
     with torch.autocast(device.type if device.type != 'mps' else 'cpu', enabled=amp):
@@ -43,8 +46,12 @@ def evaluate(net, dataloader, device, amp):
                 # compute the Dice score, ignoring background
                 dice_score += multiclass_dice_coeff(mask_pred[:, 1:], mask_true[:, 1:], reduce_batch_first=False)
 
+            img_ret = image
+            mask_true_ret = mask_true
+            mask_pred_ret = mask_pred
+
     net.train()
-    return dice_score / max(num_val_batches, 1)
+    return (dice_score / max(num_val_batches, 1)), img_ret, mask_true_ret, mask_pred_ret
 
 
 def get_args():
