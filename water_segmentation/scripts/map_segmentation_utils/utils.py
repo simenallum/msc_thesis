@@ -17,55 +17,38 @@ def calculate_gnss_bbox(origin: tuple, radius: float) -> gpd.GeoDataFrame:
     # Calculate the bounding box using the center point and radius
     bounds = ox.utils_geo.bbox_from_point(origin, dist=radius)
     north, south, east, west = bounds
-    print("Bounding box: ", west, south, east, north)
+    print("polygon from bbox creation: ", bounds)
 
     # Create a polygon geometry from the bounding box coordinates
     bbox_polygon = Polygon([(west, north), (east, north), (east, south), (west, south)])
 
     large_scale_bbx_gpd = gpd.GeoDataFrame(geometry=[bbox_polygon], crs="EPSG:4326")
 
-    return large_scale_bbx_gpd, bounds
+    # Return both the bbox and the bbox bounds
+    return large_scale_bbx_gpd
 
-def calculate_map_intersections(bbox: gpd.GeoDataFrame, multipolygon_gpd: gpd.GeoDataFrame, bounds) -> gpd.GeoDataFrame:
+def calculate_map_intersections(bbox_gpd: gpd.GeoDataFrame, multipolygon_gpd: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
-    # read the first GeoDataFrame with a single polygon
-    df1 = bbox
+    # extract the bbox polygon from frame. ( Assuming there is only 1 bbox )
+    bbox_polygon = bbox_gpd.geometry[0]
 
-    # read the second GeoDataFrame with multiple polygons
-    df2 = multipolygon_gpd
+    # create a spatial index for frame with mutiple polygons
+    sindex = multipolygon_gpd.sindex
 
-    # extract the polygon from df1 (assuming it's the only one)
-    polygon1 = df1.geometry[0]
+    # find the polygons in multipoly frame that intersect with bbox
+    possible_matches_index = list(sindex.intersection(bbox_polygon.bounds))
+    possible_matches = multipolygon_gpd.iloc[possible_matches_index].loc[multipolygon_gpd.intersects(bbox_polygon)]
 
-    # create a spatial index for df2
-    sindex = df2.sindex
-
-    # find the polygons in df2 that intersect with polygon1
-    possible_matches_index = list(sindex.intersection(polygon1.bounds))
-    possible_matches = df2.iloc[possible_matches_index].loc[df2.intersects(polygon1)]
-
-    # compute the intersection between polygon1 and all polygons in possible_matches
-    intersections = possible_matches.intersection(polygon1)
+    # compute the intersection between bbox and all polygons in possible_matches
+    intersections = possible_matches.intersection(bbox_polygon)
 
     # compute the union of the resulting polygons
     new_polygon = unary_union(intersections)
 
-    print("polygon from intersection: ", new_polygon.bounds)
-
-    north, south, east, west = bounds
-
-    # create a bounding box polygon
-    bbox = Polygon([(west, north), (east, north), (east, south), (west, south)])
-
-    # buffer the bounding box polygon
-    buffered_bbox = bbox.buffer(1e-10)
-
     # create a new GeoDataFrame with the new polygon
-    large_scale_map_gpd = gpd.GeoDataFrame({'geometry': [buffered_bbox]}, crs=df1.crs)
-    poly = gpd.GeoDataFrame({'geometry': [new_polygon]}, crs=df1.crs)
+    large_scale_map_gpd = gpd.GeoDataFrame({'geometry': [new_polygon]}, crs=bbox_gpd.crs)
 
-    return large_scale_map_gpd, poly
-
+    return large_scale_map_gpd
 
 
 def plot_gpf_frame(frame: gpd.GeoDataFrame) -> None:
@@ -73,23 +56,20 @@ def plot_gpf_frame(frame: gpd.GeoDataFrame) -> None:
     plt.grid()
     plt.show()
 
-def calculate_mask_from_gpd(frame: gpd.GeoDataFrame, poly, mask_resolution: tuple = (2000, 2000)) -> np.array:
+def calculate_mask_from_gpd(bbox_frame: gpd.GeoDataFrame, water_polygon_frame: gpd.GeoDataFrame, mask_resolution: tuple = (2000, 2000)) -> np.array:
 
-    poly = poly.geometry[0]
+    # Extract the polygon from the water polygon frame
+    water_polygon = water_polygon_frame.geometry[0]
 
-    # Load GeoPandas DataFrame containing the polygon
-    gdf = frame
-
-    # Extract the polygon from the GeoPandas DataFrame
-    polygon = gdf.geometry[0]
+    # Extract the bbox polygon from the GeoPandas DataFrame
+    bbox_polygon = bbox_frame.geometry[0]
 
     # Define the resolution of the mask
     mask_width, mask_height = mask_resolution
 
     # Define the bounding box of the mask (in the same CRS as the polygon)
-    bounds = polygon.bounds
+    bounds = bbox_polygon.bounds
     xmin, ymin, xmax, ymax = bounds
-    print("In mask creation: ", bounds)
     xres = (xmax - xmin) / mask_width
     yres = (ymax - ymin) / mask_height
 
@@ -97,7 +77,7 @@ def calculate_mask_from_gpd(frame: gpd.GeoDataFrame, poly, mask_resolution: tupl
     mask = np.zeros((mask_height, mask_width), dtype=np.uint8)
 
     # Convert the polygon to a binary mask
-    mask_img = geometry_mask(geometries=[poly],
+    mask_img = geometry_mask(geometries=[water_polygon],
                 out_shape=mask.shape,
                 transform=rasterio.Affine(xres, 0.0, xmin, 0.0, -yres, ymax),
                 invert=True,
@@ -150,7 +130,6 @@ def extract_metric_map(mask: np.array, map_resolution: tuple, map_radius: float,
     n_x = int(ground_coverage[0] / pixels_per_meter_x)
     n_y = int(ground_coverage[1] / pixels_per_meter_y)
 
-
     # Calculate the x and y coordinates of the center of the image
     center_x = width // 2
     center_y = height // 2
@@ -180,7 +159,7 @@ def scale_mask(mask: np.array, out_resolution: tuple) -> np.array:
 
 if __name__ == '__main__':
 
-    origin = (63.441347, 10.418278) # Lat, Long
+    origin = (63.441383, 10.417928) # Lat, Long
     print("Origin: ", origin)
     radius = 100 # In meters
     map_resolution = (2000, 2000)
@@ -198,20 +177,11 @@ if __name__ == '__main__':
 
     shapefile_gpd = read_gdp_from_file(file_path)
 
-    large_scale_bbox_gpd, bounds = calculate_gnss_bbox(origin, radius)
+    large_scale_bbox_gpd = calculate_gnss_bbox(origin, radius)
 
-    large_scale_map_gpd, poly = calculate_map_intersections(large_scale_bbox_gpd, shapefile_gpd, bounds)
+    large_scale_map_gpd = calculate_map_intersections(large_scale_bbox_gpd, shapefile_gpd)
 
-    large_scale_map_gpd.plot()
-    plt.xlim([bounds[3], bounds[2]])
-    plt.ylim([bounds[1], bounds[0]])
-    plt.grid()
-    plt.show()
-    
-
-    plot_gpf_frame(large_scale_map_gpd)
-
-    image_mask = calculate_mask_from_gpd(large_scale_map_gpd, poly, map_resolution)
+    image_mask = calculate_mask_from_gpd(large_scale_bbox_gpd, large_scale_map_gpd, map_resolution)
 
     rotated_image_mask = rotate_image_mask(image_mask, yaw_deg=yaw_deg)
 
@@ -222,4 +192,5 @@ if __name__ == '__main__':
     plt.figure()
     plt.grid()
     plt.imshow(scaled_mask)
+    plt.plot(camera_resolution[0]/2, camera_resolution[1]/2, '-o', ms=5, c='r')
     plt.show()
