@@ -21,8 +21,8 @@ from utils.dice_score import dice_loss
 import datetime
 
 
-dir_img = Path('/home/simenallum/Desktop/SWED_images/images')
-dir_mask = Path('/home/simenallum/Desktop/SWED_images/labels')
+dir_img = Path('/home/simenallum/Desktop/segmentation_full_dataset/images')
+dir_mask = Path('/home/simenallum/Desktop/segmentation_full_dataset/labels')
 dir_checkpoint = Path('/home/simenallum/catkin_ws/src/msc_thesis/train_segmentation/checkpoints/')
 
 dir_best_model = '/home/simenallum/catkin_ws/src/msc_thesis/train_segmentation/BEST_MODELS/'
@@ -53,13 +53,13 @@ def train_model(
     # 2. Split into train / validation partitions
     n_val = int(len(dataset) * val_percent)
     n_train = len(dataset) - n_val
-    train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
+    train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(69))
     
 
     # 3. Create data loaders
     loader_args = dict(batch_size=batch_size, num_workers=os.cpu_count(), pin_memory=True)
     train_loader = DataLoader(train_set, shuffle=True, **loader_args)
-    val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args)
+    val_loader = DataLoader(val_set, shuffle=True, drop_last=True, **loader_args)
 
     # (Initialize logging)
     experiment = wandb.init(project='U-Net-Gaofen-1-images', resume='allow', anonymous='must')
@@ -98,12 +98,14 @@ def train_model(
     criterion = nn.CrossEntropyLoss() if model.n_classes > 1 else nn.BCEWithLogitsLoss()
     global_step = 0
 
+
+    best_val_score = -1e3
+    early_stopping_val_score = -1e3
+    early_stopping_epochs_with_no_change = 0
     # 5. Begin training
     for epoch in range(1, epochs + 1):
         model.train()
         epoch_loss = 0
-        best_val_score = -1e3
-        no_val_score_change = 0
         with tqdm(total=n_train, desc=f'Epoch {epoch}/{epochs}', unit='img') as pbar:
             for batch in train_loader:
                 images, true_masks = batch['image'], batch['mask']
@@ -159,22 +161,32 @@ def train_model(
                             if not torch.isinf(value.grad).any():
                                 histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
 
-                        val_score = evaluate(model, val_loader, device, amp)
+                        val_score, val_img, val_mask_true, val_mask_pred = evaluate(model, val_loader, device, amp)
                         scheduler.step(val_score)
+
+                        if save_best_model:
+                            if val_score > best_val_score:
+                                Path(dir_best_model).mkdir(parents=True, exist_ok=True)
+                                state_dict = model.state_dict()
+                                state_dict['mask_values'] = dataset.mask_values
+                                torch.save(state_dict, str(dir_best_model / 'best_model.pth'))
+                                logging.info(f'New best model saved during epoch number: {epoch}!')
+                                logging.info(f'The saved model has a validation score of: {val_score:.6f}')
+                                best_val_score = val_score
 
                         logging.info('Validation Dice score: {}'.format(val_score))
                         try:
                             if model.n_classes > 1:
-                                mask = masks_pred.argmax(dim=1)
+                                mask = val_mask_pred.argmax(dim=1)
                             else:
-                                mask = torch.sigmoid(masks_pred) > 0.5
+                                mask = torch.sigmoid(val_mask_pred) > 0.5
 
                             experiment.log({
                                 'learning rate': optimizer.param_groups[0]['lr'],
                                 'validation Dice': val_score,
-                                'images': wandb.Image(images[0].cpu()),
+                                'images': wandb.Image(val_img[0].cpu()),
                                 'masks': {
-                                    'true': wandb.Image(true_masks[0].float().cpu()),
+                                    'true': wandb.Image(val_mask_true[0].float().cpu()),
                                     'pred': wandb.Image(mask[0].float().cpu()),
                                 },
                                 'step': global_step,
@@ -193,16 +205,13 @@ def train_model(
             torch.save(state_dict, str(dir_checkpoint / 'checkpoint_epoch{}.pth'.format(epoch)))
             logging.info(f'Checkpoint {epoch} saved!')
 
-        if save_best_model:
-            if val_score > best_val_score:
-              no_val_score_change = 0
-              Path(dir_best_model).mkdir(parents=True, exist_ok=True)
-              state_dict = model.state_dict()
-              state_dict['mask_values'] = dataset.mask_values
-              torch.save(state_dict, str(dir_best_model / 'best_model.pth'))
-              logging.info(f'New best model saved after epoch number: {epoch}!')
+        # Epoch score has to be better than a improvement of 0.5% of the old best score
+        if val_score * 1.005 > early_stopping_val_score:
+            early_stopping_epochs_with_no_change = 0
+            early_stopping_val_score = val_score
 
-        if no_val_score_change > early_stopping_patience:
+
+        if early_stopping_epochs_with_no_change > early_stopping_patience:
             logging.info(f'Early stopping after epoch: {epoch}!')
             return
 
