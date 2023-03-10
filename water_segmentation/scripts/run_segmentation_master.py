@@ -14,7 +14,7 @@ from water_segmentation.srv import sendMask, sendMaskResponse, sendMaskRequest
 import sensor_msgs.msg
 from geometry_msgs.msg import PointStamped
 
-from map_segmentation_utils import utils
+from segmentation_master_utils import utils
 
 
 
@@ -47,10 +47,15 @@ class Segmentation_master:
 		self._use_offline_map_segmentation = self.config["settings"]["enable_offline_map_segmentation"]
 		self._use_dl_segmentation = self.config["settings"]["enable_dl_segmentation"]
 
+		self._dice_threshold = self.config["settings"]["dice_threshold"]
+		self._safe_metric_dist = self.config["settings"]["min_safe_metric_dist"]
+
 		self._img_width = rospy.get_param("/drone/camera/img_width")
 		self._img_height = rospy.get_param("/drone/camera/img_height")
 		self._camera_resolution = (self._img_width, self._img_height)
 		self._camera_hfov = rospy.get_param("/drone/camera/camera_hfov")
+		self._K = np.array(rospy.get_param("/drone/camera/camera_matrix")).reshape(3,3)
+		self._focal_length = (self.K[0,0] + self.K[1,1])/2
 
 		self._camera_fov = utils.get_fov_from_hfov(
 			self._img_width,
@@ -146,10 +151,14 @@ class Segmentation_master:
 
 
 		if self._use_dl_segmentation and self._use_offline_map_segmentation:
-			# Some fancy logic to determine which one to trust!
+			# Check if the two masks overlap roughly -> indicates DL seg mask is usable
+			if (utils.dice_coefficient(dl_mask_image, map_mask_image) > self._dice_threshold):
+				mask = dl_mask_image
 
-			# mask = union_mask
-			pass
+			# DL map is too risky to use -> use the more safe map seg mask
+			else:
+				mask = map_mask_image
+
 
 		elif self._use_offline_map_segmentation:
 			mask = map_mask_image
@@ -157,6 +166,7 @@ class Segmentation_master:
 		elif self._use_dl_segmentation:
 			mask = dl_mask_image
 
+		save_dist_px = utils.convert_save_dist_to_px(self._focal_length, self._last_gnss_pos[2], self._safe_metric_dist)
 		
 		# Some code down here to determine safe locations for the drone in camera coordinates.
 		# Using similar triangles with the focal length probably best shot

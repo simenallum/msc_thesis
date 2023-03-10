@@ -12,3 +12,5 @@ settings:
   interval_between_generation: 1.0
   enable_offline_map_segmentation: False
   enable_dl_segmentation: True
+  dice_threshold: 0.8
+  min_safe_metric_dist: 5
