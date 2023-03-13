@@ -7,6 +7,7 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 from torchvision import transforms
+import matplotlib.pyplot as plt
 
 from utils.data_loading import BasicDataset
 from unet import UNet
@@ -25,13 +26,16 @@ def predict_img(net,
     with torch.no_grad():
         output = net(img).cpu()
         output = F.interpolate(output, (full_img.size[1], full_img.size[0]), mode='bilinear')
+
         if net.n_classes > 1:
             mask = output.argmax(dim=1)
         else:
             mask = torch.sigmoid(output) > out_threshold
 
-    return mask[0].long().squeeze().numpy()
+        out_np = np.squeeze(torch.sigmoid(output).detach().numpy())
+        plt.imshow(out_np, vmin=0, vmax=1)
 
+    return mask[0].long().squeeze().numpy()
 
 def get_args():
     parser = argparse.ArgumentParser(description='Predict masks from input images')

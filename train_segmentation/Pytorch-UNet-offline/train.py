@@ -16,6 +16,8 @@ from tqdm import tqdm
 import wandb
 from evaluate import evaluate
 from unet import UNet
+from segnet import SegNet_model
+
 from utils.data_loading import BasicDataset, CarvanaDataset
 from utils.dice_score import dice_loss
 import datetime
@@ -53,7 +55,7 @@ def train_model(
     # 2. Split into train / validation partitions
     n_val = int(len(dataset) * val_percent)
     n_train = len(dataset) - n_val
-    train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(69))
+    train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
     
 
     # 3. Create data loaders
@@ -156,10 +158,10 @@ def train_model(
                         histograms = {}
                         for tag, value in model.named_parameters():
                             tag = tag.replace('/', '.')
-                            if not torch.isinf(value).any():
-                                histograms['Weights/' + tag] = wandb.Histogram(value.data.cpu())
-                            if not torch.isinf(value.grad).any():
-                                histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
+                            # if not torch.isinf(value).any():
+                            #     histograms['Weights/' + tag] = wandb.Histogram(value.data.cpu())
+                            # if not torch.isinf(value.grad).any():
+                            #     histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
 
                         val_score, val_img, val_mask_true, val_mask_pred = evaluate(model, val_loader, device, amp)
                         scheduler.step(val_score)
@@ -243,13 +245,14 @@ if __name__ == '__main__':
     # Change here to adapt to your data
     # n_channels=3 for RGB images
     # n_classes is the number of probabilities you want to get per pixel
-    model = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    # model = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    model = SegNet_model.SegNet(n_channels=3, n_classes=1)
     model = model.to(memory_format=torch.channels_last)
 
     logging.info(f'Network:\n'
                  f'\t{model.n_channels} input channels\n'
-                 f'\t{model.n_classes} output channels (classes)\n'
-                 f'\t{"Bilinear" if model.bilinear else "Transposed conv"} upscaling')
+                 f'\t{model.n_classes} output channels (classes)\n')
+                #  f'\t{"Bilinear" if model.bilinear else "Transposed conv"} upscaling')
 
     if args.load:
         state_dict = torch.load(args.load, map_location=device)
