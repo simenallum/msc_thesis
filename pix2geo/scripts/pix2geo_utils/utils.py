@@ -30,25 +30,24 @@ def get_bounding_box_center(bounding_box):
 	return [center_x, center_y]
 
 def _pixel_to_camera_coordinates(center_px, drone_pos, camera_focal_length, image_center):
+  # Image center
+  x_c = image_center[0]
+  y_c = image_center[1]
 
-        # Image center
-        x_c = image_center[0]
-        y_c = image_center[1]
+  # Distance from image center to object center
+  d_x = x_c - center_px[0]
+  d_y = y_c - center_px[1]
 
-        # Distance from image center to object center
-        d_x = x_c - center_px[0]
-        d_y = y_c - center_px[1]
+  # Find altitude from similar triangles
+  z_camera = -drone_pos[2]
 
-        # Find altitude from similar triangles
-        z_camera = -drone_pos[2]
+  # Find x and y coordiantes using similar triangles as well. The signs are
+  # used so that the x-coordinate is positive to the right and the y-coordinate
+  # is positive upwards
+  x_camera = -(z_camera * d_x / camera_focal_length)
+  y_camera = -(z_camera * d_y / camera_focal_length)
 
-        # Find x and y coordiantes using similar triangles as well. The signs are
-        # used so that the x-coordinate is positive to the right and the y-coordinate
-        # is positive upwards
-        x_camera = -(z_camera * d_x / camera_focal_length)
-        y_camera = -(z_camera * d_y / camera_focal_length)
-
-        return x_camera, y_camera, z_camera
+  return x_camera, y_camera, z_camera
 
 
 def calculate_detection_location(camera_fov, detection_pixels, drone_position, img_width, img_height):
@@ -89,7 +88,6 @@ def calculate_detection_location(camera_fov, detection_pixels, drone_position, i
 	return (x_camera, y_camera, z_camera)
 
 def transform_point_cam_to_world(point, translation, yaw_deg):
-	# rotated_point = np.array([point[0], point[1], point[2]])
 	fixed_rotation = Rotation.from_euler('z', 90, degrees=True)
 	yaw_rotation = Rotation.from_euler('z', yaw_deg, degrees=True)
 
