@@ -23,11 +23,11 @@ from utils.dice_score import dice_loss
 import datetime
 
 
-dir_img = Path('/home/simenallum/Desktop/segmentation_full_dataset/images')
-dir_mask = Path('/home/simenallum/Desktop/segmentation_full_dataset/labels')
-dir_checkpoint = Path('/home/simenallum/catkin_ws/src/msc_thesis/train_segmentation/checkpoints/')
+dir_img = Path('/home/msccomputer/Desktop/segmentation_full_dataset/images')
+dir_mask = Path('/home/msccomputer/Desktop/segmentation_full_dataset/labels')
+dir_checkpoint = Path('/home/msccomputer/catkin_ws/src/msc_thesis/train_segmentation/checkpoints/')
 
-dir_best_model = '/home/simenallum/catkin_ws/src/msc_thesis/train_segmentation/BEST_MODELS/'
+dir_best_model = '/home/msccomputer/catkin_ws/src/msc_thesis/train_segmentation/BEST_MODELS/'
 dir_best_model = Path(dir_best_model + datetime.datetime.now().strftime("%d-%m-%Y-%H-%M"))
 
 def train_model(
@@ -55,7 +55,7 @@ def train_model(
     # 2. Split into train / validation partitions
     n_val = int(len(dataset) * val_percent)
     n_train = len(dataset) - n_val
-    train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
+    train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(1))
     
 
     # 3. Create data loaders
@@ -64,7 +64,7 @@ def train_model(
     val_loader = DataLoader(val_set, shuffle=True, drop_last=True, **loader_args)
 
     # (Initialize logging)
-    experiment = wandb.init(project='U-Net-Gaofen-1-images', resume='allow', anonymous='must')
+    experiment = wandb.init(project='Full-dataset', resume='allow', anonymous='must')
     experiment.config.update(
         dict(epochs=epochs, batch_size=batch_size, learning_rate=learning_rate,
              val_percent=val_percent, save_checkpoint=save_checkpoint, img_scale=img_scale, amp=amp)
@@ -88,12 +88,6 @@ def train_model(
                               weight_decay=weight_decay, 
                               momentum=momentum, 
                               foreach=True)
-    
-
-    # optimizer = torch.optim.AdamW(model.parameters(), 
-    #                               lr=learning_rate,
-    #                               weight_decay=weight_decay,
-    #                               foreach=True)
 
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=5)  # goal: maximize Dice score
     grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
@@ -130,9 +124,10 @@ def train_model(
                         loss += d_loss
                     else:
                         loss = criterion(masks_pred, true_masks)
-                        loss += dice_loss(
+                        d_loss = dice_loss(
                             F.softmax(masks_pred, dim=1).float(),
                             F.one_hot(true_masks, model.n_classes).permute(0, 3, 1, 2).float(), multiclass=True)
+                        loss += d_loss
 
                 optimizer.zero_grad(set_to_none=True)
                 grad_scaler.scale(loss).backward()
@@ -152,16 +147,9 @@ def train_model(
                 pbar.set_postfix(**{'loss (batch)': loss.item()})
 
                 # Evaluation round
-                division_step = (n_train // (5 * batch_size))
+                division_step = (n_train // (2 * batch_size))
                 if division_step > 0:
                     if global_step % division_step == 0:
-                        histograms = {}
-                        for tag, value in model.named_parameters():
-                            tag = tag.replace('/', '.')
-                            # if not torch.isinf(value).any():
-                            #     histograms['Weights/' + tag] = wandb.Histogram(value.data.cpu())
-                            # if not torch.isinf(value.grad).any():
-                            #     histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
 
                         val_score, val_img, val_mask_true, val_mask_pred = evaluate(model, val_loader, device, amp)
                         scheduler.step(val_score)
@@ -192,8 +180,7 @@ def train_model(
                                     'pred': wandb.Image(mask[0].float().cpu()),
                                 },
                                 'step': global_step,
-                                'epoch': epoch,
-                                **histograms
+                                'epoch': epoch
                             })
                                 
                         except Exception as e:
@@ -211,6 +198,9 @@ def train_model(
         if val_score * 1.005 > early_stopping_val_score:
             early_stopping_epochs_with_no_change = 0
             early_stopping_val_score = val_score
+        else:
+            early_stopping_epochs_with_no_change += 1
+            print(f"Early stopping epochs with no change: {early_stopping_epochs_with_no_change}")
 
 
         if early_stopping_epochs_with_no_change > early_stopping_patience:
@@ -231,6 +221,7 @@ def get_args():
     parser.add_argument('--amp', action='store_true', default=False, help='Use mixed precision')
     parser.add_argument('--bilinear', action='store_true', default=False, help='Use bilinear upsampling')
     parser.add_argument('--classes', '-c', type=int, default=2, help='Number of classes')
+    parser.add_argument('--model_type', type=str, default="segnet", help='Modeltype: "unet" or "segnet"')
 
     return parser.parse_args()
 
@@ -245,14 +236,22 @@ if __name__ == '__main__':
     # Change here to adapt to your data
     # n_channels=3 for RGB images
     # n_classes is the number of probabilities you want to get per pixel
-    # model = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
-    model = SegNet_model.SegNet(n_channels=3, n_classes=1)
+    if args.model_type == "unet":
+      model = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    elif args.model_type == "segnet":
+      model = SegNet_model.SegNet(n_channels=3, n_classes=args.classes)
+    else:
+      logging.warning(f"Unknown model type {args.model_type}. Exiting!")
+      exit()
+    
     model = model.to(memory_format=torch.channels_last)
 
     logging.info(f'Network:\n'
                  f'\t{model.n_channels} input channels\n'
                  f'\t{model.n_classes} output channels (classes)\n')
-                #  f'\t{"Bilinear" if model.bilinear else "Transposed conv"} upscaling')
+
+    if args.model_type == "unet":
+      logging.info(f'{"Bilinear" if model.bilinear else "Transposed conv"} upscaling')
 
     if args.load:
         state_dict = torch.load(args.load, map_location=device)

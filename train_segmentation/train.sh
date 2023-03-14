@@ -14,9 +14,10 @@ VALIDATION=$(echo $CONFIG | jq -r '.validation')
 AMP=$(echo $CONFIG | jq -r '.amp')
 BILINEAR=$(echo $CONFIG | jq -r '.bilinear')
 CLASSES=$(echo $CONFIG | jq -r '.classes')
+MODEl_TYPE=$(echo $CONFIG | jq -r '.model_type')
 
 # Construct the command string
-CMD="python3 Pytorch-UNet-offline/train.py"
+CMD="python3 Pytorch-segmentation-offline/train.py"
 if [ ! -z "$EPOCHS" ]; then CMD+=" --epochs $EPOCHS"; fi
 if [ ! -z "$BATCH_SIZE" ]; then CMD+=" --batch-size $BATCH_SIZE"; fi
 if [ ! -z "$LEARNING_RATE" ]; then CMD+=" --learning-rate $LEARNING_RATE"; fi
@@ -26,6 +27,7 @@ if [ ! -z "$VALIDATION" ]; then CMD+=" --validation $VALIDATION"; fi
 if [ ! -z "$AMP" ]; then CMD+=" --amp"; fi
 if [ ! -z "$BILINEAR" ]; then CMD+=" --bilinear"; fi
 if [ ! -z "$CLASSES" ]; then CMD+=" --classes $CLASSES"; fi
+if [ ! -z "$MODEL_TYPE" ]; then CMD+=" --model_type $MODEL_TYPE"; fi
 
 # Execute the command
 eval $CMD
