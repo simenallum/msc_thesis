@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+
+    <node
+        name="segmentation_master"
+        pkg="water_segmentation"
+        type="run_segmentation_master.py"
+        output="screen">
+        
+        <param name="config_file" value="segmentation_master.yaml" />
+
+    </node>
+
+    <rosparam command="load" file="$(find anafi_setup)/config/anafi_config.yaml"/>
+
+</launch>
+
+
