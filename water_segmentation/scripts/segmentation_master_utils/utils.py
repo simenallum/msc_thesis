@@ -1,7 +1,12 @@
 import numpy as np
+import math
 from skimage.util import view_as_windows
 
+def get_fov_from_hfov(image_width, image_height, hfov):
+	aspect_ratio = image_width / image_height
+	vfov = math.degrees(2 * math.atan(math.tan(math.radians(hfov / 2)) / aspect_ratio))
 
+	return (hfov, vfov)
 
 def dice_coefficient(mask1: np.array, mask2: np.array) -> float:
     """
@@ -22,27 +27,10 @@ def dice_coefficient(mask1: np.array, mask2: np.array) -> float:
     dice_coeff = 2 * np.sum(intersection) / (np.sum(mask1) + np.sum(mask2))
     return dice_coeff
 
-def is_mask_only_water(mask):
-    """
-    Checks if the given mask contains only white pixels, meaning water detection.
-    
-    Parameters:
-        mask (numpy.ndarray): The mask as a NumPy array.
-        
-    Returns:
-        bool: True if the mask contains only white pixels, False otherwise.
-    """
-    # Check if all pixel values are 255
-    return (mask == 255).all()
 
 def convert_save_dist_to_px(focal_length: float, drone_altitude: float, safe_metric_distance: float) -> int:
     # Using similar triangles
     return int(safe_metric_distance * focal_length / drone_altitude)
-
-def find_safe_locations_in_mask(mask: np.array, safe_dist_px: int) -> tuple:
-
-
-    pass
 
 
 def find_safe_areas(image: np.ndarray, window_size: int, stride: int) -> np.ndarray:
@@ -75,13 +63,17 @@ def find_safe_areas(image: np.ndarray, window_size: int, stride: int) -> np.ndar
     safe_loc = np.array(safe_loc)
 
     # Calculate the distances of the safe windows to the center of the image
-    distances = np.linalg.norm(safe_loc - center, axis=1)
+    if len(safe_loc != 0):
+      distances = np.linalg.norm(safe_loc - center, axis=1)
 
-    # Sort the safe windows by their distance to the center of the image
-    sorted_indices = np.argsort(distances)
-    sorted_positions = safe_loc[sorted_indices]
+      # Sort the safe windows by their distance to the center of the image
+      sorted_indices = np.argsort(distances)
+      sorted_positions = safe_loc[sorted_indices]
 
-    return sorted_positions
+      return sorted_positions
+
+    else:
+      return None
 
 
 if __name__ == '__main__':
@@ -89,14 +81,16 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
     focal_length = 932.8763
-    drone_alt = 60
+    drone_alt = 40
     safe_metric_dist = 5
     stride = 10
 
+
     px_safe_dist = convert_save_dist_to_px(focal_length, drone_alt, safe_metric_dist)
+    print(stride)
 
     # Example usage with a square of size 10 pixels
-    img = cv2.imread("/home/simenallum/Desktop/test10_0.png", 0)
+    img = cv2.imread("/home/msccomputer/Desktop/test10_0.png", 0)
     sorted = find_safe_areas(img, px_safe_dist, stride)
     plt.imshow(img)
     plt.plot(sorted[0][1], sorted[0][0], 'o', ms=3, c='r')

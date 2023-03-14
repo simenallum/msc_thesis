@@ -14,3 +14,4 @@ settings:
   enable_dl_segmentation: True
   dice_threshold: 0.8
   min_safe_metric_dist: 5
+  stride_in_search: 10

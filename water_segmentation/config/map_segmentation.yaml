@@ -3,7 +3,7 @@ offline_map:
     width: 2000
     height: 2000
   map_radius: 100
-  shapefile_path: "/home/simenallum/catkin_ws/src/msc_thesis/water_segmentation/data/trondheim_water/trondheim_water.shp"
+  shapefile_path: "/home/msccomputer/catkin_ws/src/msc_thesis/water_segmentation/data/trondheim_water/trondheim_water.shp"
 
 topics:
   input:

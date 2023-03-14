@@ -15,6 +15,7 @@ import sensor_msgs.msg
 from geometry_msgs.msg import PointStamped
 
 from segmentation_master_utils import utils
+import matplotlib.pyplot as plt
 
 
 
@@ -44,6 +45,7 @@ class Segmentation_master:
 	def _initalize_parameters(self):
 		self.bridge = CvBridge()
 		self._intervals = self.config["settings"]["interval_between_generation"]
+		self._stride = self.config["settings"]["stride_in_search"]
 		self._use_offline_map_segmentation = self.config["settings"]["enable_offline_map_segmentation"]
 		self._use_dl_segmentation = self.config["settings"]["enable_dl_segmentation"]
 
@@ -55,7 +57,7 @@ class Segmentation_master:
 		self._camera_resolution = (self._img_width, self._img_height)
 		self._camera_hfov = rospy.get_param("/drone/camera/camera_hfov")
 		self._K = np.array(rospy.get_param("/drone/camera/camera_matrix")).reshape(3,3)
-		self._focal_length = (self.K[0,0] + self.K[1,1])/2
+		self._focal_length = (self._K[0,0] + self._K[1,1])/2
 
 		self._camera_fov = utils.get_fov_from_hfov(
 			self._img_width,
@@ -106,7 +108,7 @@ class Segmentation_master:
 
 	def _setup_publishers(self):
 
-		self.mask_pub = rospy.Publisher(
+		self.safe_point_pub = rospy.Publisher(
 			self.config["topics"]["output"]["safe_points"], 
 			PointStamped, 
 			queue_size=10
@@ -131,15 +133,6 @@ class Segmentation_master:
 		request = sendMaskRequest()
 		request.image_request = True
 
-		if self._use_offline_map_segmentation:
-			# call the service and get the response
-			response = self._map_mask_service_proxy(request)
-
-			# process the response
-			map_mask_msg = response.image_data
-			map_mask_image = self.bridge.imgmsg_to_cv2(map_mask_msg, "mono8")
-
-
 		if self._use_dl_segmentation:
 			start_time = time.time()
 			# call the service and get the response
@@ -148,6 +141,14 @@ class Segmentation_master:
 			# process the response
 			dl_mask_msg = response.image_data
 			dl_mask_image = self.bridge.imgmsg_to_cv2(dl_mask_msg, "mono8")
+
+		if self._use_offline_map_segmentation:
+			# call the service and get the response
+			response = self._map_mask_service_proxy(request)
+
+			# process the response
+			map_mask_msg = response.image_data
+			map_mask_image = self.bridge.imgmsg_to_cv2(map_mask_msg, "mono8")
 
 
 		if self._use_dl_segmentation and self._use_offline_map_segmentation:
@@ -168,11 +169,32 @@ class Segmentation_master:
 
 		save_dist_px = utils.convert_save_dist_to_px(self._focal_length, self._last_gnss_pos[2], self._safe_metric_dist)
 		
-		# Some code down here to determine safe locations for the drone in camera coordinates.
-		# Using similar triangles with the focal length probably best shot
+		safe_points = utils.find_safe_areas(mask, save_dist_px, stride=self._stride)
+
+		if not (np.any(safe_points) == None):
+			self._publish_safe_point(safe_points[0])
+
+			# Define the center of the circle
+			center = (int(safe_points[0][1]), int(safe_points[0][0]))
+
+			# Draw the circle on the image
+			cv2.circle(mask, center, 10, 150, -1)
+
+			self.mask_pub.publish(self.bridge.cv2_to_imgmsg(mask, "mono8"))
 
 
+	def _prepare_out_message(self, point):
+		msg = PointStamped()
+		msg.header.stamp = rospy.Time.now()
 
+		msg.point.x = point[0]
+		msg.point.y = point[1]
+
+		return msg
+
+	def _publish_safe_point(self, point):
+		msg = self._prepare_out_message(point)
+		self.safe_point_pub.publish(msg)
 
 
 	def _shutdown(self):

@@ -14,8 +14,9 @@ from torchvision import transforms
 
 from water_segmentation.srv import sendMask, sendMaskResponse
 import sensor_msgs.msg
-from Pytorch_UNet.unet import UNet
-from Pytorch_UNet.predict import predict_img, mask_to_image
+from Pytorch_segmentation.unet import UNet
+from Pytorch_segmentation.segnet import SegNet_model
+from Pytorch_segmentation.predict import predict_img, mask_to_image
 
 
 class DL_segmentation:
@@ -49,6 +50,7 @@ class DL_segmentation:
 		self.model_path = self.config['model_settings']['model_path']
 		self.classes = self.config['model_settings']['classes']
 		self.bilinear = self.config['model_settings']['bilinear']
+		self.model_type = self.config['model_settings']['model_type']
 
 		self._last_image = None
 
@@ -68,7 +70,14 @@ class DL_segmentation:
 		)
 
 	def _initialize_model(self):
-		self.model = UNet(n_channels=3, n_classes=self.classes, bilinear=self.bilinear)
+		if self.model_type == "segnet":
+			self.model = SegNet_model.SegNet(n_channels=3, n_classes=self.classes)
+		elif self.model_type == "unet":
+			self.model = UNet(n_channels=3, n_classes=self.classes, bilinear=self.bilinear)
+		else:
+			rospy.logerr(f"[dl_segmentation]: Uknown model type. Exiting!")
+			rospy.signal_shutdown("Uknown model type!")
+
 		self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 		self.model.to(device=self.device)
 		self.state_dict = torch.load(self.model_path, map_location=self.device)
