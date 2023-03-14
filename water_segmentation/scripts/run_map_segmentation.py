@@ -9,7 +9,7 @@ from cv_bridge import CvBridge
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from std_srvs.srv import SetBool, SetBoolResponse
+from water_segmentation.srv import sendMask, sendMaskResponse
 import sensor_msgs.msg
 import geometry_msgs.msg
 
@@ -83,7 +83,7 @@ class Map_segmentation:
 	def _initalize_services(self):
 		self._srv_make_mask = rospy.Service(
 			self.config["services"]["make_mask"],
-			SetBool, 
+			sendMask, 
 			self._handle_create_mask
 		)
 		
@@ -117,8 +117,6 @@ class Map_segmentation:
 		self._last_yaw_angle = yaw
 
 	def _handle_create_mask(self, req):
-		rospy.loginfo("Creating mask from offline map")
-
 		# Calculate the ground coverage based on camera field of view and drone altitude
 		ground_coverage = utils.calculate_ground_coverage(camera_fov=self._camera_fov, altitude=self._last_gnss_pos[2])
 
@@ -146,9 +144,9 @@ class Map_segmentation:
 		self._publish_mask_image(mask_img)
 
 		# Make responce for service call
-		res = SetBoolResponse()
-		res.success = True
+		res = sendMaskResponse()
 		res.message = "Mask created!"
+		res.image_data = self.bridge.cv2_to_imgmsg(mask_img, "mono8")
 		return res
 
 
@@ -157,7 +155,7 @@ class Map_segmentation:
 		self.mask_pub.publish(mask_msg)
 
 
-	def _shutdown():
+	def _shutdown(self):
 		rospy.loginfo("Shutting down offline map Segmentation node")
 
 	def start(self):

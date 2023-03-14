@@ -7,9 +7,12 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 from torchvision import transforms
+import matplotlib.pyplot as plt
 
 from utils.data_loading import BasicDataset
 from unet import UNet
+from segnet import SegNet_model
+
 from utils.utils import plot_img_and_mask
 
 def predict_img(net,
@@ -25,13 +28,16 @@ def predict_img(net,
     with torch.no_grad():
         output = net(img).cpu()
         output = F.interpolate(output, (full_img.size[1], full_img.size[0]), mode='bilinear')
+
         if net.n_classes > 1:
             mask = output.argmax(dim=1)
         else:
             mask = torch.sigmoid(output) > out_threshold
 
-    return mask[0].long().squeeze().numpy()
+        out_np = np.squeeze(torch.sigmoid(output).detach().numpy())
+        plt.imshow(out_np, vmin=0, vmax=1)
 
+    return mask[0].long().squeeze().numpy()
 
 def get_args():
     parser = argparse.ArgumentParser(description='Predict masks from input images')
@@ -48,6 +54,7 @@ def get_args():
                         help='Scale factor for the input images')
     parser.add_argument('--bilinear', action='store_true', default=False, help='Use bilinear upsampling')
     parser.add_argument('--classes', '-c', type=int, default=2, help='Number of classes')
+    parser.add_argument('--model_type', type=str, default="segnet", help='Modeltype: "unet" or "segnet"')
     
     return parser.parse_args()
 
@@ -83,7 +90,13 @@ if __name__ == '__main__':
     in_files = args.input
     out_files = get_output_filenames(args)
 
-    net = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    if args.model_type == "unet":
+      net = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    elif args.model_type == "segnet":
+       net = SegNet_model.SegNet(n_channels=3, n_classes=args.classes)
+    else:
+      logging.warning(f"Unknown model type {args.model_type}. Exiting!")
+      exit()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Loading model {args.model}')

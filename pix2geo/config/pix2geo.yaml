@@ -1,7 +1,14 @@
 topics:
   input:
     tracks: "/search/tracks"
-    rpy: "/anafi/rpy"
+    safe_points_cam_frame: "/segmentation/safe_points/camera_frame"
+    pose: "/anafi/pose"
     NED_gnss: "/anafi/ned_pos_from_gnss"
   output:
     track_world_coordinate: "/search/tracks/world_coordinates"
+    track_camera_coordinate_triangulate: "/search/tracks/camera_coordinates_tria"
+    track_camera_coordinate_fov: "/search/tracks/camera_coordinates_fov"
+    safe_point_world_coordinate: "/segmentation/safe_points/world_frame"
+
+flags:
+  publish_camera_coordinates: True

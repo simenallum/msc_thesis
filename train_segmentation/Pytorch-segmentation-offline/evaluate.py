@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 from unet import UNet
+from segnet import SegNet_model
 import argparse
 import logging
 from pathlib import Path
@@ -59,21 +60,29 @@ def get_args():
     
     parser.add_argument('--model', '-m', default='MODEL.pth', metavar='FILE',
                         help='Specify the file in which the model is stored')
+    parser.add_argument('--model_type', '-m', default='segnet', help='Modeltype: "unet" or "segnet"')
     
     return parser.parse_args()
 
 if __name__ == '__main__':
     args = get_args()
 
-    dir_img = Path('/home/simenallum/Desktop/SWED_images/test/images')
-    dir_mask = Path('/home/simenallum/Desktop/SWED_images/test/labels')
+    dir_img = Path('/home/msccomputer/Desktop/segmentation_full_dataset/test/images')
+    dir_mask = Path('/home/msccomputer/Desktop/segmentation_full_dataset/test/labels')
 
     n_classes = 1
     bilinear = False
     img_scale = 0.5
     batch_size = 4
 
-    net = UNet(n_channels=3, n_classes=n_classes, bilinear=bilinear)
+    if args.model_type == "unet":
+      net = UNet(n_channels=3, n_classes=n_classes, bilinear=bilinear)
+    elif args.model_type == "segnet":
+       net = SegNet_model.SegNet(n_channels=3, n_classes=n_classes)
+    else:
+      logging.warning(f"Unknown model type {args.model_type}. Exiting!")
+      exit()
+   
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -88,7 +97,7 @@ if __name__ == '__main__':
     loader_args = dict(batch_size=batch_size, num_workers=os.cpu_count(), pin_memory=True)
     test_loader = DataLoader(dataset, shuffle=True, **loader_args)
 
-    val_score = evaluate(net, test_loader, device, amp=True)
+    val_score, _, _, _ = evaluate(net, test_loader, device, amp=True)
 
     print(val_score)
 

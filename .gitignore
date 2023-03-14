@@ -5,3 +5,4 @@ train_yolov8/yolov8
 *.bag
 test_tools/scripts/live_rosbaging/rosbags/*
 train_segmentation/wandb/*
+*.bag

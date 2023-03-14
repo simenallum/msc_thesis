@@ -1,5 +1,5 @@
 topics:
   input:
-    GNSS: "/gps_data"
+    GNSS: "/anafi/gnss_location"
   output:
-    NED: "/NED_position_drone"
+    NED: "/anafi/ned_pos_from_gnss"

@@ -1,0 +1,17 @@
+services:
+  map_seg_name: make_offline_mask
+  dl_seg_name: make_dl_mask
+
+topics:
+  input:
+    gnss: "/anafi/gnss_location"
+  output: 
+    safe_points: "/segmentation/safe_points/camera_frame"
+
+settings:
+  interval_between_generation: 1.0
+  enable_offline_map_segmentation: False
+  enable_dl_segmentation: True
+  dice_threshold: 0.8
+  min_safe_metric_dist: 5
+  stride_in_search: 10

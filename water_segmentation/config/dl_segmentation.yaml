@@ -1,11 +1,14 @@
 topics:
   input:
-    image: "/anafi/images_t"
+    image: "/image"
   output:
     water_mask: "/segmentation/dl_mask"
 
 model_settings:
-  model_path: "/home/simenallum/catkin_ws/src/msc_thesis/water_segmentation/dl_models/best_model.pth"
+  model_path: "/home/msccomputer/catkin_ws/src/msc_thesis/train_segmentation/BEST_MODELS/14-03-2023-10-39/best_model.pth"
   classes: 1
   bilinear: False
+  model_type: "segnet"
   
+services:
+  make_mask: make_dl_mask

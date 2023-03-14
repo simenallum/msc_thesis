@@ -5,6 +5,8 @@ import rosbag
 import math
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import NavSatFix
+import gmplot
+import matplotlib.pyplot as plt
 
 # Set up ROS node and publisher
 rospy.init_node('drone_data_simulator', anonymous=True)
@@ -20,6 +22,13 @@ min_altitude = 10.0  # meters
 max_altitude = 50.0  # meters
 start_time = rospy.Time.now()
 init_pos = (63.442088, 10.415013)
+
+# Initialize lists for latitude and longitude
+lat_list = []
+lon_list = []
+altitude_list = []
+time_list = []
+yaw_list = []
 
 # Simulate drone data
 for i in range(int(duration * rate)):
@@ -37,7 +46,13 @@ for i in range(int(duration * rate)):
     gnss_msg.longitude = init_pos[1] + pos_x / (111319.9 * math.cos(math.radians(gnss_msg.latitude)))
     gnss_msg.altitude = pos_z
     gnss_msg.position_covariance = [1e-4, 0, 0, 0, 1e-4, 0, 0, 0, 1e-4]
-    
+
+    lat_list.append(gnss_msg.latitude)
+    lon_list.append(gnss_msg.longitude)
+    altitude_list.append(gnss_msg.altitude)
+    time_list.append(rospy.Duration.to_sec(gnss_msg.header.stamp))
+    yaw_list.append(yaw_angle)
+
     # Generate pose data
     pose_msg = PoseStamped()
     pose_msg.header.stamp = start_time + t
@@ -52,3 +67,19 @@ for i in range(int(duration * rate)):
     bag.write('/anafi/pose', pose_msg, pose_msg.header.stamp)
 
 bag.close()
+
+# Initialize the map
+gmap = gmplot.GoogleMapPlotter(lat_list[0], lon_list[0], 16)
+
+# Plot the GNSS coordinates on the map
+gmap.plot(lat_list, lon_list, 'cornflowerblue', edge_width=5)
+
+# Save the map to an HTML file
+gmap.draw("map.html")
+
+
+plt.subplot(2,1,1)
+plt.plot(time_list, yaw_list)
+plt.subplot(2,1,2)
+plt.plot(time_list, altitude_list)
+plt.show()
