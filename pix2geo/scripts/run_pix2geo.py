@@ -5,33 +5,9 @@ import os
 import yaml
 import sys
 import numpy as np
-from geometry_msgs.msg import PointStamped, Vector3Stamped, PoseStamped
+from geometry_msgs.msg import PointStamped, PoseStamped
 import pix2geo_utils.utils 
 from scipy.spatial.transform import Rotation
-
-
-'''
-This  node will need to have access to the following data:
-	Parameters:
-		- Image size: width / height
-		- Camera FOV
-
-	Topics it need to access:
-		- Track detections
-		- WORLD NED POS OF DRONE ( This will be delayed relative to the BBOXs -> Save last couple of messages and do approx based on header? )
-		- Some sort of compass heading etc. 
-
-	Node publishing:
-		- Custom message with detection type, track ID, and coordinates?
-
-
-	This node will need to do the following:
-		- Extract bbx info from the track detections
-		- Estimate camera coordinates for detections
-		- transform the detections into "global" world frame -> transformation matrix from camera to world compensating for yaw angle?
-		- Possibly also estimate GLOBAL GNSS positions of objects? Use python package for transformation
-
-'''
 
 from yolov8_ros.msg import BoundingBox, BoundingBoxes
 from pix2geo.msg import TrackWorldCoordinate
@@ -79,6 +55,12 @@ class Pix2Geo:
 			BoundingBoxes, 
 			self._new_tracks_callback
 		)
+		
+		rospy.Subscriber(
+			self.config["topics"]["input"]["safe_points_cam_frame"], 
+			PointStamped, 
+			self._new_safe_points_callback
+		)
 
 		rospy.Subscriber(
 			self.config["topics"]["input"]["pose"], 
@@ -96,6 +78,12 @@ class Pix2Geo:
 		self._track_world_coord_pub = rospy.Publisher(
 			self.config["topics"]["output"]["track_world_coordinate"], 
 			TrackWorldCoordinate, 
+			queue_size=10
+		)
+
+		self._safe_point_world_coord_pub = rospy.Publisher(
+			self.config["topics"]["output"]["safe_point_world_coordinate"], 
+			PointStamped, 
 			queue_size=10
 		)
 
@@ -149,6 +137,43 @@ class Pix2Geo:
 		
 
 			self._publish_track_world_coordinate(detection_world_frame, track_id, track_probability, track_class)
+
+	def _new_safe_points_callback(self, point_msg):
+		cam_x = point_msg.point.x
+		cam_y = point_msg.point.y
+			
+		center = (cam_x, cam_y)
+
+		safe_point_camera_frame_tria = pix2geo_utils.utils._pixel_to_camera_coordinates(
+			center_px=center,
+			drone_pos=self._last_gnss_meas,
+			camera_focal_length=self._camera_focal_length,
+			image_center=self._image_center
+		)
+			
+
+		safe_point_world_frame = pix2geo_utils.utils.transform_point_cam_to_world(
+			safe_point_camera_frame_tria,
+			translation=self._last_gnss_meas,
+			yaw_deg=np.rad2deg(self._last_compass_meas)
+		)
+		
+
+		self._publish_safe_point_world_coordinate(safe_point_world_frame)
+
+	def _prepare_safe_point_message(self, point):
+		msg = PointStamped()
+		msg.header.stamp = rospy.Time.now()
+
+		msg.point.x = point[0]
+		msg.point.y = point[1]
+		msg.point.z = point[2]
+
+		return msg
+
+	def _publish_safe_point_world_coordinate(self, point):
+		msg = self._prepare_safe_point_message(point)
+		self._safe_point_world_coord_pub.publish(msg)
 
 	def _new_compass_meas_callback(self, measurement):
 		quaternions=[
