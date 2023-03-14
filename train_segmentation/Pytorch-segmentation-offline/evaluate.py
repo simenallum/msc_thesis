@@ -60,7 +60,7 @@ def get_args():
     
     parser.add_argument('--model', '-m', default='MODEL.pth', metavar='FILE',
                         help='Specify the file in which the model is stored')
-    parser.add_argument('--model_type', '-m', default='segnet', help='Modeltype: "unet" or "segnet"')
+    parser.add_argument('--model_type', default='segnet', help='Modeltype: "unet" or "segnet"')
     
     return parser.parse_args()
 
