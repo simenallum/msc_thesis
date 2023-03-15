@@ -14,7 +14,7 @@ from geometry_msgs.msg import PointStamped
 from pix2geo.msg import TrackWorldCoordinate
 from anafi_uav_msgs.msg import PointWithCovarianceStamped
 from perception_master.msg import DetectedPerson
-from std_srvs import SetBool, SetBoolRequest, SetBoolResponse
+from std_srvs.srv import SetBool, SetBoolRequest, SetBoolResponse
 
 from perception_master_utils import utils
 
@@ -133,14 +133,17 @@ class Perception_master:
 
 		# Handle human tracks
 		if track["class_name"] == "human":
+			pub_track = False
 
 			# Track_id already exists
 			if utils.key_exists(track["track_id"], self._human_table):
 
-				distance_between_measurements = utils.calculate_euclidian_distance(track["point"], self._human_table["track_id"])
+				distance_between_measurements = utils.calculate_euclidian_distance(track["point"], self._human_table[track["track_id"]])
 				if distance_between_measurements >= self._radius_of_acceptance_new_human_detections:
 					# Update position for track
-					self._human_table["track_id"] = track["point"]
+					self._human_table[track["track_id"]] = track["point"]
+
+					pub_track = True
 
 			# Track ID does not exist
 			else:
@@ -150,18 +153,21 @@ class Perception_master:
 					# Add new track and point
 					self._human_table[track["track_id"]] = track["point"]
 
-			
-			distance_to_FO = utils.get_closest_distance(track["point"], self._FO_table)
-			critical_level = utils.calculate_critical_level(distance_to_FO, self._critical_level_distances)
-			
-			self._publish_humans_detection(track["point"], critical_level, track_msg.header)
+					pub_track = True
+
+
+			if pub_track: 
+				distance_to_FO = utils.get_closest_distance(track["point"], self._FO_table)
+				critical_level = utils.calculate_critical_level(distance_to_FO, self._critical_level_distances)
+				
+				self._publish_humans_detection(track["point"], critical_level, track_msg.header)
 					
 
 		# Handle FO tracks
 		elif track["class_name"] == "floating-objects":
 			# Track_id already exists
 			if utils.key_exists(track["track_id"], self._FO_table):
-				distance_between_measurements = utils.calculate_euclidian_distance(track["point"], self._FO_table["track_id"])
+				distance_between_measurements = utils.calculate_euclidian_distance(track["point"], self._FO_table[track["track_id"]])
 				if distance_between_measurements >= self._radius_of_acceptance_new_FO_detections:
 					self._FO_table["track_id"] = track["point"]
 
@@ -169,6 +175,7 @@ class Perception_master:
 				point_in_table = utils.is_point_within_threshold_dict(track["point"], self._radius_of_acceptance_new_FO_detections, self._FO_table)
 				if not point_in_table:
 					self._FO_table[track["track_id"]] = track["point"]
+
 
 
 	def _new_platform_EKF_callback(self, ekf_msg):
@@ -213,7 +220,7 @@ class Perception_master:
 			"point": np.array([track_msg.x, track_msg.y, track_msg.z]),
 			"track_id": track_msg.track_id,
 			"class_name": track_msg.class_name,
-			"confidence": track_msg.probabilty
+			"confidence": track_msg.probability
 		}
 
 		return content

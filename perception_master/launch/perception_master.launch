@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+
+    <node
+        name="perception_master"
+        pkg="perception_master"
+        type="run_perception_master.py"
+        output="screen">
+        
+        <param name="config_file" value="perception_master.yaml" />
+
+    </node>
+
+    <rosparam command="load" file="$(find anafi_setup)/config/anafi_config.yaml"/>
+
+</launch>
+
+

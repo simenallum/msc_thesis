@@ -126,17 +126,22 @@ class Map_segmentation:
 		# Calculate the intersections between the bounding box and the watershapefile
 		large_scale_map_gpd = utils.calculate_map_intersections(large_scale_bbox_gpd, self._shapefile_gpd)
 
-		# Calculate the binary image mask from the large-scale map using the given map resolution
-		image_mask = utils.calculate_mask_from_gpd(large_scale_bbox_gpd, large_scale_map_gpd, self._map_resolution)
+		if not np.any(large_scale_map_gpd.is_empty):
 
-		# Rotate the image mask based on the current yaw angle
-		rotated_image_mask = utils.rotate_image_mask(image_mask, yaw_deg=self._last_yaw_angle)
+			# Calculate the binary image mask from the large-scale map using the given map resolution
+			image_mask = utils.calculate_mask_from_gpd(large_scale_bbox_gpd, large_scale_map_gpd, self._map_resolution)
 
-		# Extract a metric map from the rotated image mask using the map resolution and large map radius
-		metric_mask = utils.extract_metric_map(rotated_image_mask, self._map_resolution, self._large_map_radius, ground_coverage)
+			# Rotate the image mask based on the current yaw angle
+			rotated_image_mask = utils.rotate_image_mask(image_mask, yaw_deg=self._last_yaw_angle)
 
-		# Scale the metric map to match the camera resolution
-		scaled_mask = utils.scale_mask(metric_mask, self._camera_resolution)
+			# Extract a metric map from the rotated image mask using the map resolution and large map radius
+			metric_mask = utils.extract_metric_map(rotated_image_mask, self._map_resolution, self._large_map_radius, ground_coverage)
+
+			# Scale the metric map to match the camera resolution
+			scaled_mask = utils.scale_mask(metric_mask, self._camera_resolution)
+		
+		else:
+			scaled_mask = np.zeros((self._camera_resolution[1], self._camera_resolution[0]))
 
 		mask_img = utils.mask_to_image(scaled_mask, mask_values=[0, 255])
 

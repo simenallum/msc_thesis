@@ -10,8 +10,9 @@ topics:
 
 settings:
   interval_between_generation: 1.0
-  enable_offline_map_segmentation: False
+  enable_offline_map_segmentation: True
   enable_dl_segmentation: True
   dice_threshold: 0.8
-  min_safe_metric_dist: 5
+  min_safe_metric_dist: 0.2
   stride_in_search: 10
+  min_altitude_to_generate_safe_points: 1

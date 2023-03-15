@@ -39,7 +39,7 @@ class SegNet(nn.Module):
 
         self.num_channels = n_channels
 
-        self.vgg16 = models.vgg16(pretrained=True)
+        self.vgg16 = models.vgg16(weights=models.VGG16_Weights.DEFAULT)
 
 
         # Encoder layers
