@@ -41,10 +41,8 @@ def train_model(
 		save_best_model: bool = True,
 		img_scale: float = 0.5,
 		amp: bool = False,
-		weight_decay: float = 1e-8,
-		momentum: float = 0.999,
 		gradient_clipping: float = 1.0,
-		early_stopping_patience: int = 5
+		early_stopping_patience: int = 10
 ):
 	# 1. Create dataset
 	try:
@@ -55,7 +53,7 @@ def train_model(
 	# 2. Split into train / validation partitions
 	n_val = int(len(dataset) * val_percent)
 	n_train = len(dataset) - n_val
-	train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(2))
+	train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(1))
 	
 
 	# 3. Create data loaders
@@ -84,10 +82,14 @@ def train_model(
 
 	# 4. Set up the optimizer, the loss, the learning rate scheduler and the loss scaling for AMP
 	optimizer = optim.RMSprop(model.parameters(),
-							  lr=learning_rate, 
-							  weight_decay=weight_decay, 
-							  momentum=momentum, 
-							  foreach=True)
+								lr=learning_rate, 
+								weight_decay=0, 
+								momentum=0, 
+								foreach=True)
+	
+	# optimizer = optim.Adam(model.parameters(),
+	# 							foreach=True)
+
 
 	scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=5)  # goal: maximize Dice score
 	grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
@@ -146,66 +148,72 @@ def train_model(
 				})
 				pbar.set_postfix(**{'loss (batch)': loss.item()})
 
-				# Evaluation round
-				division_step = (n_train // (2 * batch_size))
-				if division_step > 0:
-					if global_step % division_step == 0:
+		experiment.log({
+					'Epoch train loss': epoch_loss,
+					'epoch': epoch
+				})
+		# 6. Evaluate model on validation dataset
+		val_score, val_img, val_mask_true, val_mask_pred = evaluate(model, val_loader, device, amp)
+		scheduler.step(val_score)
 
-						val_score, val_img, val_mask_true, val_mask_pred = evaluate(model, val_loader, device, amp)
-						scheduler.step(val_score)
+		logging.info('Validation Dice score: {}'.format(val_score))
+		try:
+			if model.n_classes > 1:
+				mask = val_mask_pred.argmax(dim=1)
+			else:
+				mask = torch.sigmoid(val_mask_pred) > 0.5
 
-						if save_best_model:
-							if val_score > best_val_score:
-								Path(dir_best_model).mkdir(parents=True, exist_ok=True)
-								state_dict = model.state_dict()
-								state_dict['mask_values'] = dataset.mask_values
-								torch.save(state_dict, str(dir_best_model / 'best_model.pth'))
-								logging.info(f'New best model saved during epoch number: {epoch}!')
-								logging.info(f'The saved model has a validation score of: {val_score:.6f}')
-								best_val_score = val_score
+			experiment.log({
+				'learning rate': optimizer.param_groups[0]['lr'],
+				'validation Dice': val_score,
+				'images': wandb.Image(val_img[0].cpu()),
+				'masks': {
+					'true': wandb.Image(val_mask_true[0].float().cpu()),
+					'pred': wandb.Image(mask[0].float().cpu()),
+				},
+				'step': global_step,
+				'epoch': epoch
+			})
+				
+		except Exception as e:
+			print(e)
+			pass
 
-						logging.info('Validation Dice score: {}'.format(val_score))
-						try:
-							if model.n_classes > 1:
-								mask = val_mask_pred.argmax(dim=1)
-							else:
-								mask = torch.sigmoid(val_mask_pred) > 0.5
-
-							experiment.log({
-								'learning rate': optimizer.param_groups[0]['lr'],
-								'validation Dice': val_score,
-								'images': wandb.Image(val_img[0].cpu()),
-								'masks': {
-									'true': wandb.Image(val_mask_true[0].float().cpu()),
-									'pred': wandb.Image(mask[0].float().cpu()),
-								},
-								'step': global_step,
-								'epoch': epoch
-							})
-								
-						except Exception as e:
-							print(e)
-							pass
+		if save_best_model:
+			if val_score > best_val_score:
+				Path(dir_best_model).mkdir(parents=True, exist_ok=True)
+				state_dict = model.state_dict()
+				state_dict['mask_values'] = dataset.mask_values
+				torch.save(state_dict, str(dir_best_model / 'best_model.pth'))
+				logging.info(f'New best model after epoch number: {epoch}!')
+				logging.info(f'The saved model has a validation score of: {val_score:.6f}')
+				best_val_score = val_score
 
 		if save_checkpoint:
 			Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
 			state_dict = model.state_dict()
 			state_dict['mask_values'] = dataset.mask_values
-			torch.save(state_dict, str(dir_checkpoint / 'checkpoint_epoch{}.pth'.format(epoch)))
+			torch.save(state_dict, str(dir_checkpoint / 'checkpoint.pth'))
 			logging.info(f'Checkpoint {epoch} saved!')
 
 		# Epoch score has to be better than a improvement of 0.5% of the old best score
-		if val_score * 1.005 > early_stopping_val_score:
+		val_mult_score = val_score * 1.005
+		if  val_mult_score > early_stopping_val_score:
+			print(f"EARLY STOPPING RESET! 0.5% improvement of old score: {val_mult_score}. Old score: {early_stopping_val_score}")
 			early_stopping_epochs_with_no_change = 0
-			early_stopping_val_score = val_score
+			if val_score > early_stopping_val_score:
+				early_stopping_val_score = val_score
 		else:
 			early_stopping_epochs_with_no_change += 1
+			print(f"0.5% improvement of old score: {val_mult_score}. Old score: {early_stopping_val_score}")
 			print(f"Early stopping epochs with no change: {early_stopping_epochs_with_no_change}")
 
 
-		if early_stopping_epochs_with_no_change > early_stopping_patience:
+		if early_stopping_epochs_with_no_change >= early_stopping_patience:
 			logging.info(f'Early stopping after epoch: {epoch}!')
 			return
+		
+		print("\n")
 
 
 def get_args():
