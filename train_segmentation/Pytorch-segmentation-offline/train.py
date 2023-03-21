@@ -229,7 +229,7 @@ def get_args():
 	parser.add_argument('--amp', action='store_true', default=False, help='Use mixed precision')
 	parser.add_argument('--bilinear', action='store_true', default=False, help='Use bilinear upsampling')
 	parser.add_argument('--classes', '-c', type=int, default=2, help='Number of classes')
-	parser.add_argument('--model_type', type=str, default="segnet", help='Modeltype: "unet" or "segnet"')
+	parser.add_argument('--model_type', type=str, default="", help='Modeltype: "unet" or "segnet"')
 
 	return parser.parse_args()
 
@@ -245,8 +245,10 @@ if __name__ == '__main__':
 	# n_channels=3 for RGB images
 	# n_classes is the number of probabilities you want to get per pixel
 	if args.model_type == "unet":
+		logging.info(f'Network typ: UNet\n')
 		model = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
 	elif args.model_type == "segnet":
+		logging.info(f'Network typ: SegNet\n')
 		model = SegNet_model.SegNet(n_channels=3, n_classes=args.classes)
 	else:
 		logging.warning(f"Unknown model type {args.model_type}. Exiting!")

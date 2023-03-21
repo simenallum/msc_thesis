@@ -5,6 +5,8 @@ import os
 import yaml
 import sys
 import time
+import numpy as np
+import matplotlib.pyplot as plt
 from cv_bridge import CvBridge
 
 
@@ -43,6 +45,8 @@ class DeepSortTracker:
 		self._setup_publishers()
 		self._setup_subscribers()
 		self._initialize_tracker()
+
+		self.avg_est_time = []
 
 	def _initalize_parameters(self):
 		self.bridge = CvBridge()
@@ -96,11 +100,19 @@ class DeepSortTracker:
 		)
 
 	def _new_bb_calback(self, bounding_boxes):
-		start = time.time()
+		clock = False
 		bbs = self._extract_bbs(bounding_boxes.bounding_boxes)
 		frame = self.bridge.imgmsg_to_cv2(bounding_boxes.frame, "bgr8")
 
+		if not len(bbs) == 0:
+			start = time.time()
+			clock = True
 		tracks = self.tracker.update_tracks(bbs, frame=frame)
+		if clock:
+			end = time.time()
+			ms = (end - start) * 1000
+			self.avg_est_time.append(ms)
+			rospy.logdebug("Time taken: {:.2f} ms".format(ms))
 
 		track_list = self._extract_bbs_and_trackid(tracks)
 		
@@ -112,8 +124,7 @@ class DeepSortTracker:
 			tracks_msg = self._prepare_tracks_msg(track_list)
 			self._publish_confirmed_tracks(tracks_msg)
 
-		end = time.time()
-		print("Time taken: {:.2f} ms".format((end - start) * 1000))
+		
 
 	def _publish_image_with_tracks(self, image):
 		msg = self.bridge.cv2_to_imgmsg(image, "bgr8")
@@ -158,7 +169,14 @@ class DeepSortTracker:
 
 		return boundingBoxes
 
-	def _shutdown():
+	def _shutdown(self):
+		np_est = np.array(self.avg_est_time)
+		rospy.loginfo(f"Average estimation runtime: {np.mean(np_est)} ms")
+		rospy.loginfo(f"Variance in estimation runtime: {np.var(np_est)} ms")
+		rospy.loginfo(f"St. dev in estimation runtime: {np.std(np_est)} ms")
+
+		np.save("/home/msccomputer/catkin_ws/src/msc_thesis/deepsort_tracker/data/runtime.npy", np_est)
+
 		rospy.loginfo("Shutting down tracker node")
 
 	def start(self):

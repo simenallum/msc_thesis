@@ -6,3 +6,4 @@ train_yolov8/yolov8
 test_tools/scripts/live_rosbaging/rosbags/*
 train_segmentation/wandb/*
 .vscode
+train_yolov8/runs/*
