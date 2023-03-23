@@ -1,10 +1,11 @@
 *.pt
 *.pyc
 *.pth
-train_yolov8/yolov8
+train_yolov8/search_network
 *.bag
 test_tools/scripts/live_rosbaging/rosbags/*
 train_segmentation/wandb/*
 .vscode
 train_yolov8/runs/*
 *.svg
+train_yolov8/Platform*
