@@ -161,4 +161,7 @@ elif [[ $ENV == "real" ]]; then
     echo "Rosbagging real topics"
     rosbag record -O $OUTPUT_DIR/$TIME \
         $OUTSIDE
+elif [[ $ENV == "all" ]]; then
+    echo "Rosbagging all topics"
+    rosbag record -a -O $OUTPUT_DIR/$TIME
 fi

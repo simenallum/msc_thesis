@@ -57,6 +57,8 @@ class SortTracker:
 		self.measurement_cov = self.sort_params['measurement_cov']
 		self.system_cov = self.sort_params['system_cov']
 
+		self.avg_est_time = []
+
 	def _setup_subscribers(self):
 		rospy.Subscriber(
 			self.config["topics"]["input"]["bounding_boxes"], 
@@ -80,15 +82,28 @@ class SortTracker:
 			)
 
 	def _initialize_tracker(self):
-		self.tracker = Sort(self.init_cov, self.measurement_cov, self.system_cov, max_age=self.max_age, min_hits=self.min_hits)
+		self.tracker = Sort(self.init_cov, self.measurement_cov, self.system_cov, max_age=self.max_age, min_hits=self.min_hits, iou_threshold=self.iou_threshold)
 
 	def _new_bb_calback(self, bounding_boxes):
+		clock = False
+
 		bbs = self._extract_bbs(bounding_boxes.bounding_boxes)
 		frame = self.bridge.imgmsg_to_cv2(bounding_boxes.frame, "bgr8")
 
 		if len(bbs) == 0:
 			bbs = np.empty((0, 5))
+		else:
+			clock = True
+			start = time.time()		
+
 		tracks = self.tracker.update(bbs)
+
+		if clock:
+			end = time.time()
+			ms = (end - start) * 1000
+			self.avg_est_time.append(ms)
+			rospy.logdebug("Time taken: {:.2f} ms".format(ms))
+			clock = False
 
 		track_list = self._extract_bbs_and_trackid(tracks)
 
@@ -148,7 +163,16 @@ class SortTracker:
 		self.class_combinations[int(class_id)] = class_name
 
 
-	def _shutdown():
+	def _shutdown(self):
+		rospy.loginfo("Shutting down tracker node")
+
+		np_est = np.array(self.avg_est_time)
+		rospy.loginfo(f"Average estimation runtime: {np.mean(np_est)} ms")
+		rospy.loginfo(f"Variance in estimation runtime: {np.var(np_est)} ms")
+		rospy.loginfo(f"St. dev in estimation runtime: {np.std(np_est)} ms")
+
+		np.save("/home/msccomputer/catkin_ws/src/msc_thesis/sort_tracker/data/runtime.npy", np_est)
+
 		rospy.loginfo("Shutting down tracker node")
 
 	def start(self):

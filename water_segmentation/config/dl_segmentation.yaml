@@ -1,6 +1,6 @@
 topics:
   input:
-    image: "/image"
+    image: "/anafi/image"
   output:
     water_mask: "/segmentation/dl_mask"
 

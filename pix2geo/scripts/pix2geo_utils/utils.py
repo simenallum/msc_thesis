@@ -91,10 +91,10 @@ def transform_point_cam_to_world(point, translation, yaw_deg):
 	fixed_rotation = Rotation.from_euler('z', 90, degrees=True)
 	yaw_rotation = Rotation.from_euler('z', yaw_deg, degrees=True)
 
-	tot_rot = yaw_rotation * fixed_rotation
-	
-	# Apply the translation and rotation to the point
-	rotated_point = tot_rot.apply(point)
+	fixed_rotated_point = fixed_rotation.apply(point)
+	translated_point = fixed_rotated_point + [0.07, 0.0, 0.0]
+	rotated_point = yaw_rotation.apply(translated_point)
+
 	point_new = rotated_point + [translation[0], translation[1], translation[2]]
 	return point_new
 

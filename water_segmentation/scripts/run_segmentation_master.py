@@ -48,6 +48,7 @@ class Segmentation_master:
 		self._stride = self.config["settings"]["stride_in_search"]
 		self._use_offline_map_segmentation = self.config["settings"]["enable_offline_map_segmentation"]
 		self._use_dl_segmentation = self.config["settings"]["enable_dl_segmentation"]
+		self._min_altitude_to_generate_safe_points = self.config["settings"]["min_altitude_to_generate_safe_points"]
 
 		self._dice_threshold = self.config["settings"]["dice_threshold"]
 		self._safe_metric_dist = self.config["settings"]["min_safe_metric_dist"]
@@ -84,7 +85,7 @@ class Segmentation_master:
 		if self._use_offline_map_segmentation:
 			# wait for the services to become available
 			try:
-				rospy.wait_for_service(self._map_seg_service_name, timeout=5)
+				rospy.wait_for_service(self._map_seg_service_name, timeout=10)
 			except:
 				rospy.logerr(f"[Segmentation master] Couldt not detect the ROS-service names: {self._map_seg_service_name}. -- > Exiting")
 				rospy.signal_shutdown("Service not detected!")
@@ -95,7 +96,7 @@ class Segmentation_master:
 		if self._use_dl_segmentation:
 			# wait for the services to become available
 			try:
-				rospy.wait_for_service(self._dl_seg_service_name, timeout=5)
+				rospy.wait_for_service(self._dl_seg_service_name, timeout=10)
 			except:
 				rospy.logerr(f"[Segmentation master] Couldt not detect the ROS-service names: {self._dl_seg_service_name}. -- > Exiting")
 				rospy.signal_shutdown("Service not detected!")
@@ -129,6 +130,9 @@ class Segmentation_master:
 	
 
 	def _timer_callback(self, event):
+		if self._last_gnss_pos[2] < self._min_altitude_to_generate_safe_points:
+			return
+		
 		# create a request object
 		request = sendMaskRequest()
 		request.image_request = True
@@ -167,9 +171,12 @@ class Segmentation_master:
 		elif self._use_dl_segmentation:
 			mask = dl_mask_image
 
-		save_dist_px = utils.convert_save_dist_to_px(self._focal_length, self._last_gnss_pos[2], self._safe_metric_dist)
+		safe_dist_px = utils.convert_save_dist_to_px(self._focal_length, self._last_gnss_pos[2], self._safe_metric_dist)
+
+		if safe_dist_px > min(self._camera_resolution):
+			return
 		
-		safe_points = utils.find_safe_areas(mask, save_dist_px, stride=self._stride)
+		safe_points = utils.find_safe_areas(mask, safe_dist_px, stride=self._stride)
 
 		if not (np.any(safe_points) == None):
 			self._publish_safe_point(safe_points[0])
