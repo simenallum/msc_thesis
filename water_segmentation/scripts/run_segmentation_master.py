@@ -66,7 +66,7 @@ class Segmentation_master:
 			self._camera_hfov
 		)
 
-		self._last_gnss_pos = None
+		self._last_gnss_pos = [None, None, None]
 		
 		rospy.loginfo("[Segmenation master]: All parameters loaded!")
 
@@ -116,7 +116,7 @@ class Segmentation_master:
 		)
 
 		self.mask_pub = rospy.Publisher(
-			"DEBUG", 
+			"SEGMASK_with_SP", 
 			sensor_msgs.msg.Image, 
 			queue_size=10
 		)
@@ -130,6 +130,10 @@ class Segmentation_master:
 	
 
 	def _timer_callback(self, event):
+		if None in self._last_gnss_pos:
+			rospy.logwarn(f"Can not create segmentation mask. Missing gnss-measurements")
+			return
+
 		if self._last_gnss_pos[2] < self._min_altitude_to_generate_safe_points:
 			return
 		

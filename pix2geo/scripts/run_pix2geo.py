@@ -101,6 +101,10 @@ class Pix2Geo:
 			)
 
 	def _new_tracks_callback(self, bounding_boxes):
+		if None in (self._last_gnss_meas + self._last_compass_meas):
+			rospy.logwarn(f"Can not transform safe point. Missing either compass or gnss-measurements")
+			return
+		
 		tracks = self._extract_bbs(bounding_boxes.bounding_boxes)
 
 		for track in tracks:
@@ -139,6 +143,11 @@ class Pix2Geo:
 			self._publish_track_world_coordinate(detection_world_frame, track_id, track_probability, track_class)
 
 	def _new_safe_points_callback(self, point_msg):
+		if None in (self._last_gnss_meas + self._last_compass_meas):
+			rospy.logwarn(f"Can not transform safe point. Missing either compass or gnss-measurements")
+			return
+		
+		
 		cam_x = point_msg.point.x
 		cam_y = point_msg.point.y
 			

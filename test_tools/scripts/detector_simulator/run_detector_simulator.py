@@ -50,7 +50,7 @@ class DetectorSimulator:
 		self.detection_confidence = self.config["settings"]["detection_confidence"]
 
 	def _initalize_detector(self):
-		self.detector = apriltags_detector.aprilTagDetector()
+		self.detector = apriltags_detector.aprilTagDetector(min_id=9)
 
 	
 	def _setup_subscribers(self):

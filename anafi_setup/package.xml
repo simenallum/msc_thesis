@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>anafi_setup</name>
+  <version>0.0.0</version>
+  <description>The anafi_setup package</description>
+  <maintainer email="simensal@todo.todo">TODO</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+ </package>

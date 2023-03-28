@@ -1,0 +1,8 @@
+# Goal: Position to reach
+float32 goal_z_ned      # [m]
+---
+# Result: Final position
+float32 result_z_ned     # [m]
+---
+# Feedback: Current position
+float32 feedback_z_ned   # [m]

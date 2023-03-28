@@ -1,0 +1,6 @@
+topics:
+  input:
+    bounding_boxes: "/yolo/platform/boxes"
+  output:
+    position: "/estimate/dnn_cv/position"
+    heading: "/estimate/dnn_cv/heading"

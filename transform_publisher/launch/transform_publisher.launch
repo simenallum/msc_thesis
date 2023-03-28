@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+    <node
+        name="transform_publisher"
+        pkg="transform_publisher"
+        type="transform_publisher.py"
+        output="screen">
+
+        <param name="/use_sim_time" value="true"/>
+    </node>
+
+</launch>

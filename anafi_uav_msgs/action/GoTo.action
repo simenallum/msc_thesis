@@ -1,0 +1,14 @@
+# Goal: Position to travel to
+int32 x_d_ned         # [m]
+int32 y_d_ned         # [m]
+int32 z_d_ned         # [m]
+---
+# Result: Final position
+int32 final_x_ned     # [m]
+int32 final_y_ned     # [m]
+int32 final_z_ned     # [m]
+---
+# Feedback: current position
+int32 x_ned           # [m]
+int32 y_ned           # [m]
+int32 z_ned           # [m]

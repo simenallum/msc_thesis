@@ -10,9 +10,8 @@ import numpy as np
 import cv2
 from scipy.spatial.transform import Rotation
 
-from geometry_msgs.msg import PointStamped
+from geometry_msgs.msg import PointStamped, PoseWithCovarianceStamped
 from pix2geo.msg import TrackWorldCoordinate
-from anafi_uav_msgs.msg import PointWithCovarianceStamped
 from perception_master.msg import DetectedPerson
 from std_srvs.srv import SetBool, SetBoolRequest, SetBoolResponse
 
@@ -42,6 +41,8 @@ class Perception_master:
 		self._initalize_services()
 
 	def _initalize_parameters(self):
+		self.all_proxies_loaded = False
+
 		# Platform detection utils
 		self._min_dist_to_initiate_platform_tracking = self.config["settings"]["min_dist_to_initiate_platform_tracking"]
 
@@ -52,6 +53,7 @@ class Perception_master:
 		self._track_confidence_threshold = self.config["settings"]["track_confidence_threshold"]
 		self._human_table = {}
 		self._FO_table = {}
+		self._track_critical_level_table = {}
 
 		# Safe point generation
 		self._radius_of_acceptance_new_safe_points = self.config["settings"]["radius_of_acceptance_new_safe_points"]
@@ -75,7 +77,7 @@ class Perception_master:
 
 		rospy.Subscriber(
 			self.config["topics"]["input"]["platform_EKF"], 
-			PointWithCovarianceStamped, 
+			PoseWithCovarianceStamped, 
 			self._new_platform_EKF_callback
 		)
 
@@ -89,6 +91,8 @@ class Perception_master:
 			rospy.wait_for_service(self._AT_node_activation_name, timeout=5)
 			rospy.wait_for_service(self._DNN_node_activation_name, timeout=5)
 			rospy.wait_for_service(self._GNSS_node_activation_name, timeout=5)
+
+			self.all_proxies_loaded = True
 		except:
 			rospy.logerr(f"[Perception master] Couldt not detect one of the activation nodes ROS services -- > Exiting")
 			rospy.signal_shutdown("Service not detected!")
@@ -138,6 +142,7 @@ class Perception_master:
 			# Track_id already exists
 			if utils.key_exists(track["track_id"], self._human_table):
 
+				# Check if distance is larger than the threshold for accepting new tracks
 				distance_between_measurements = utils.calculate_euclidian_distance(track["point"], self._human_table[track["track_id"]])
 				if distance_between_measurements >= self._radius_of_acceptance_new_human_detections:
 					# Update position for track
@@ -147,6 +152,7 @@ class Perception_master:
 
 			# Track ID does not exist
 			else:
+				# Check if distance is larger than the threshold for accepting new tracks
 				point_in_table = utils.is_point_within_threshold_dict(track["point"], self._radius_of_acceptance_new_human_detections, self._human_table)
 				
 				if not point_in_table:
@@ -157,10 +163,12 @@ class Perception_master:
 
 
 			if pub_track: 
+				# Publish the track and safe severity level in another table.
 				distance_to_FO = utils.get_closest_distance(track["point"], self._FO_table)
 				critical_level = utils.calculate_critical_level(distance_to_FO, self._critical_level_distances)
+				self._track_critical_level_table[track["track_id"]] = critical_level
 				
-				self._publish_humans_detection(track["point"], critical_level, track_msg.header)
+				self._publish_humans_detection(track["point"], critical_level, track["track_id"], track_msg.header)
 					
 
 		# Handle FO tracks
@@ -177,8 +185,22 @@ class Perception_master:
 					self._FO_table[track["track_id"]] = track["point"]
 
 
+			# iterate trough human table and re-publish tracks with changed severity level
+			for key in self._human_table:
+				distance_to_FO = utils.calculate_euclidian_distance(self._human_table[key], self._FO_table[track["track_id"]])
+				critical_level = utils.calculate_critical_level(distance_to_FO, self._critical_level_distances)
+
+				if critical_level != self._track_critical_level_table[key]:
+					self._track_critical_level_table[key] = critical_level
+
+					self._publish_humans_detection(self._human_table[key], critical_level, key, track_msg.header)
+
+
 
 	def _new_platform_EKF_callback(self, ekf_msg):
+		if not self.all_proxies_loaded:
+			return
+		
 		vector = self._extract_ekf_msg(ekf_msg)
 
 		length = utils.calculate_euclidian_distance_of_vector(vector)
@@ -226,7 +248,7 @@ class Perception_master:
 		return content
 	
 	def _extract_ekf_msg(self, ekf_msg):
-		return np.array([ekf_msg.position.x, ekf_msg.position.y, ekf_msg.position.z])
+		return np.array([ekf_msg.pose.pose.position.x, ekf_msg.pose.pose.position.y, ekf_msg.pose.pose.position.z])
 	
 	def _publish_safe_point(self, safe_point, header):
 		safe_point_message = PointStamped()
@@ -237,13 +259,14 @@ class Perception_master:
 
 		self._safe_point_pub.publish(safe_point_message)
 
-	def _publish_humans_detection(self, human_point, critical_level, header):
+	def _publish_humans_detection(self, human_point, critical_level, track_id, header):
 		human_detection_msg = DetectedPerson()
 		human_detection_msg.header = header
 		human_detection_msg.position.x = human_point[0]
 		human_detection_msg.position.y = human_point[1]
 		human_detection_msg.position.z = human_point[2]
 		human_detection_msg.severity = critical_level
+		human_detection_msg.id = track_id
 
 		self._detected_person_pub.publish(human_detection_msg)
 

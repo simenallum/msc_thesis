@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+    <rosparam command="load" file="$(find anafi_setup)/config/anafi_config.yaml"/>
+
+    <node name="gnss_throttler" type="throttle" pkg="topic_tools" args="messages /anafi/gnss_ned_in_body_frame 1 /anafi/gnss_ned_in_body_frame/1hz" />
+
+    <node
+        name="perception_ekf"
+        pkg="perception_ekf"
+        type="run_ekf.py"
+        output="screen">
+        <param name="config_file" value="ekf_config.yaml" />
+    </node>
+</launch>

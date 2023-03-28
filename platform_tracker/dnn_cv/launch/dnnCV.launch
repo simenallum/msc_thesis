@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+    <rosparam command="load" file="$(find anafi_setup)/config/anafi_config.yaml"/>
+
+    <node
+        name="dnn_cv"
+        pkg="dnncv"
+        type="dnncv.py">
+        <param name="config_file" value="dnncv_config.yaml" />
+    </node>
+
+</launch>

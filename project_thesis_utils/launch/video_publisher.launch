@@ -1,0 +1,19 @@
+<launch>
+  <node name="video_publisher" pkg="utilities" type="video_publisher.py" output="screen">
+    <param name="video_path" value="/home/msccomputer/Desktop/video_split_fullhd/DJI_0915_0002_40m_1.mp4" />
+
+    <param name="topic_name" value="/anafi/images" />
+    <param name="bb_topic_name" value="/yolo/search/boxes" />
+    <param name="track_gt_topic_name" value="/track_GT" />
+    <param name="annotations_folder_path" value="/home/msccomputer/Desktop/MOBdrone/new_dir/labels/annotations_3_coco_classes" />
+    <param name="video_name" value="DJI_0915_0002_40m_1" />
+
+    <param name="fps" value="30" />
+  </node>
+
+  <node name="image_throttler" type="throttle" pkg="topic_tools" args="messages /anafi/image 15 /anafi/image_t" />
+</launch>
+
+
+<!-- DJI_0915_0002_40m_1.mp4 -->
+

@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>perception_ekf</name>
+  <version>0.0.0</version>
+  <description>The perception_ekf package</description>
+
+  <maintainer email="killah@todo.todo">TODO</maintainer>
+  <license>TODO</license>
+
+  <author email="peterbh@stud.ntnu.no">Peter Bull Hove</author>
+  <author email="martfal@stud.ntnu.no">Martin Falang</author>
+  <author email="simensal@stud.ntnu.no">Simen Stensrod Allum</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>rospy</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>anafi_uav_msgs</build_depend>
+  <build_depend>utilities</build_depend>
+
+  <build_export_depend>anafi_uav_msgs</build_export_depend>
+  <build_export_depend>utilities</build_export_depend>
+
+  <exec_depend>rospy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>message_runtime</exec_depend>
+  <exec_depend>anafi_uav_msgs</exec_depend>
+  <exec_depend>utilities</exec_depend>
+
+
+</package>

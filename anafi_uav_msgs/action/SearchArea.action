@@ -1,0 +1,13 @@
+# Goal: search an area
+# Position in rectangle to search from 
+int32 x_ned_center    # [m]
+int32 y_ned_center    # [m]
+
+# Side of rectangle to search 
+float32 search_length # [m]
+---
+# Result: An area has been searched
+bool area_searched 
+---
+# Feedback: Percentage of area searched through
+float32 percentage_area_searched 
