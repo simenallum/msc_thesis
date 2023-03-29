@@ -49,25 +49,19 @@ EVAL_PIX2GEO="/anafi/image \
 ANAFI_PERCEPTION_RELEVANT_TOPICS="/anafi/image \
         /anafi/attitude \
         /anafi/gnss_location \
-        /darknet_ros/bounding_boxes \
         /anafi/height \
         /anafi/optical_flow_velocities \
         /anafi/pose \
-        /anafi/odometry \
-        /anafi/rpy \
         /anafi/polled_body_velocities \
-        /anafi/rpy \
         /tf \
         /tf_static \
         /estimate/aprilTags/pose \
-        /estimate/aprilTags/pose/camera_frame \
         /estimate/dnn_cv/position \
         /estimate/ekf \
         /estimate/aprilTags/num_tags_detected \
-        /anafi/ned_pose_from_gnss \
+        /anafi/ned_pos_from_gnss \
         /anafi/gnss_ned_in_body_frame \
-        /anafi/gnss_ned_in_body_frame/1hz \
-        /estimate/ekf/velocity"
+        /anafi/gnss_ned_in_body_frame/1hz"
 
 OUTSIDE="/anafi/image \
         /anafi/attitude \
@@ -164,4 +158,8 @@ elif [[ $ENV == "real" ]]; then
 elif [[ $ENV == "all" ]]; then
     echo "Rosbagging all topics"
     rosbag record -a -O $OUTPUT_DIR/$TIME
+elif [[ $ENV == "test_PT" ]]; then
+    echo "Rosbagging all topics"
+    rosbag record -O $OUTPUT_DIR/$TIME \
+        $ANAFI_PERCEPTION_RELEVANT_TOPICS
 fi
