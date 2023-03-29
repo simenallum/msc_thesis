@@ -60,7 +60,7 @@ class transformPublisher():
 		t = TransformStamped()
 
 		t.header.stamp = msg.header.stamp
-		t.header.frame_id = "world_at_body_origin" # Transformation from frame id TO child id
+		t.header.frame_id = "camera_at_body_origin" # Transformation from frame id TO child id
 		t.child_frame_id = "body"
 		t.transform.translation.x = 0.0
 		t.transform.translation.y = 0.0
@@ -73,7 +73,7 @@ class transformPublisher():
 
 		self.dynamic_broadcaster.sendTransform(t)
 
-		world_to_drone = Rotation.from_euler('XYZ', [roll, pitch, yaw], degrees=True) # Down mind the yaw angle
+		world_to_drone = Rotation.from_euler('xyz', [roll, pitch, yaw], degrees=True) # Down mind the yaw angle
 		quat = world_to_drone.inv().as_quat()
 
 		t = TransformStamped()
@@ -97,7 +97,7 @@ class transformPublisher():
 		static_tr_stamped.header.stamp = rospy.Time.now()
 
 		static_tr_stamped.header.frame_id = "camera" # Transformation from frame id TO child id
-		static_tr_stamped.child_frame_id = "world_at_body_origin"
+		static_tr_stamped.child_frame_id = "camera_at_body_origin"
 
 		static_tr_stamped.transform.translation.x = 0.0
 		static_tr_stamped.transform.translation.y = 0.07
@@ -123,7 +123,10 @@ class transformPublisher():
 		point.point.y = -msg.point.y
 		point.point.z = -msg.point.z
 
-		body_point = self.tfBuffer.transform(point, "body", rospy.Duration(0.1))
+		try:
+			body_point = self.tfBuffer.transform(point, "body", rospy.Duration(0.1))
+		except Exception as e:
+			return
 
 		self.gnss_bodyframe_publisher.publish(body_point)
 
