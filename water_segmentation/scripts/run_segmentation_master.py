@@ -13,6 +13,7 @@ from scipy.spatial.transform import Rotation
 from water_segmentation.srv import sendMask, sendMaskResponse, sendMaskRequest
 import sensor_msgs.msg
 from geometry_msgs.msg import PointStamped
+from std_msgs.msg import Float64
 
 from segmentation_master_utils import utils
 import matplotlib.pyplot as plt
@@ -52,6 +53,10 @@ class Segmentation_master:
 
 		self._dice_threshold = self.config["settings"]["dice_threshold"]
 		self._safe_metric_dist = self.config["settings"]["min_safe_metric_dist"]
+
+		self._debug = self.config["debug"]
+		if self._debug:
+			self._DL_mask_usage_counter = []
 
 		self._img_width = rospy.get_param("/drone/camera/img_width")
 		self._img_height = rospy.get_param("/drone/camera/img_height")
@@ -115,11 +120,24 @@ class Segmentation_master:
 			queue_size=10
 		)
 
-		self.mask_pub = rospy.Publisher(
-			"SEGMASK_with_SP", 
-			sensor_msgs.msg.Image, 
-			queue_size=10
-		)
+		if self._debug:
+			self.mask_pub = rospy.Publisher(
+				"SEGMASK_with_SP", 
+				sensor_msgs.msg.Image, 
+				queue_size=10
+			)
+
+			self.dice_score_pub = rospy.Publisher(
+				"SEGMASK_dice_score",
+				Float64,
+				queue_size=10
+			)
+
+			self.percentage_DL_mask_used_pub = rospy.Publisher(
+				"SEGMASK_percentage_DL_mask_used",
+				Float64,
+				queue_size=10
+			)
 
 	def _new_gnss_callback(self, gnss_msg):
 		self._last_gnss_pos = [
@@ -145,7 +163,7 @@ class Segmentation_master:
 			start_time = time.time()
 			# call the service and get the response
 			response = self._dl_mask_service_proxy(request)
-			rospy.loginfo("Time taken: {:.2f} seconds".format(time.time() - start_time))
+			rospy.logdebug("Time taken: {:.2f} seconds".format(time.time() - start_time))
 			# process the response
 			dl_mask_msg = response.image_data
 			dl_mask_image = self.bridge.imgmsg_to_cv2(dl_mask_msg, "mono8")
@@ -161,13 +179,30 @@ class Segmentation_master:
 
 		if self._use_dl_segmentation and self._use_offline_map_segmentation:
 			# Check if the two masks overlap roughly -> indicates DL seg mask is usable
-			if (utils.dice_coefficient(dl_mask_image, map_mask_image) > self._dice_threshold):
+			dice_score = utils.dice_coefficient(dl_mask_image, map_mask_image)
+			if (dice_score > self._dice_threshold):
 				mask = dl_mask_image
+
+				if self._debug:
+					self._DL_mask_usage_counter.append(1)
 
 			# DL map is too risky to use -> use the more safe map seg mask
 			else:
 				mask = map_mask_image
 
+				if self._debug:
+					self._DL_mask_usage_counter.append(0)
+
+			if self._debug:
+				msg = Float64()
+				msg.data = dice_score
+				self.dice_score_pub.publish(msg)
+
+				count_ones = self._DL_mask_usage_counter.count(1)
+				percentage_ones = (count_ones / len(self._DL_mask_usage_counter)) * 100
+				msg = Float64()
+				msg.data = percentage_ones
+				self.percentage_DL_mask_used_pub.publish(msg)
 
 		elif self._use_offline_map_segmentation:
 			mask = map_mask_image
@@ -185,13 +220,14 @@ class Segmentation_master:
 		if not (np.any(safe_points) == None):
 			self._publish_safe_point(safe_points[0])
 
-			# Define the center of the circle
-			center = (int(safe_points[0][1]), int(safe_points[0][0]))
+			if self._debug:
+				# Define the center of the circle
+				center = (int(safe_points[0][1]), int(safe_points[0][0]))
 
-			# Draw the circle on the image
-			cv2.circle(mask, center, 10, 150, -1)
+				# Draw the circle on the image
+				cv2.circle(mask, center, 10, 150, -1)
 
-			self.mask_pub.publish(self.bridge.cv2_to_imgmsg(mask, "mono8"))
+				self.mask_pub.publish(self.bridge.cv2_to_imgmsg(mask, "mono8"))
 
 
 	def _prepare_out_message(self, point):
@@ -209,7 +245,8 @@ class Segmentation_master:
 
 
 	def _shutdown(self):
-		rospy.loginfo("[Segmentation master] Shutting down node")
+		rospy.loginfo("[Segmentation master]: Shutting down node")
+
 
 	def start(self):
 		rospy.loginfo("[Segmentation master] Starting node")

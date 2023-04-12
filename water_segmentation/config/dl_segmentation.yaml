@@ -5,10 +5,10 @@ topics:
     water_mask: "/segmentation/dl_mask"
 
 model_settings:
-  model_path: "/home/msccomputer/catkin_ws/src/msc_thesis/offline_utils/train_segmentation/BEST_MODELS/17-03-2023-16-59/best_model.pth"
+  model_path: "/home/msccomputer/catkin_ws/src/msc_thesis/water_segmentation/data/segmentation_models/SegNet_rmsprop.pth"
   classes: 1
   bilinear: False
-  model_type: "unet"
+  model_type: "segnet"
   
 services:
   make_mask: make_dl_mask

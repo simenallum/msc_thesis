@@ -16,3 +16,5 @@ settings:
   min_safe_metric_dist: 0.2
   stride_in_search: 10
   min_altitude_to_generate_safe_points: 1
+
+debug: True

@@ -22,7 +22,11 @@ def dice_coefficient(mask1: np.array, mask2: np.array) -> float:
     # Convert the mask values to binary (i.e., 0s and 1s)
     mask1 = mask1.astype(bool)
     mask2 = mask2.astype(bool)
-    
+
+    # Invert masks. After inversion land = 1, water = 0.
+    mask1 = np.invert(mask1)
+    mask2 = np.invert(mask2)
+
     intersection = np.logical_and(mask1, mask2)
     dice_coeff = 2 * np.sum(intersection) / (np.sum(mask1) + np.sum(mask2))
     return dice_coeff
