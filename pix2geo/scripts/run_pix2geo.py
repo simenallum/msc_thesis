@@ -35,8 +35,8 @@ class Pix2Geo:
 		self._setup_subscribers()
 
 	def _initalize_parameters(self):
-		self._last_compass_meas = None
-		self._last_gnss_meas = None
+		self._last_compass_meas = [None]
+		self._last_gnss_meas = [None]
 
 		self._flag_publish_camera_frame_detections = self.config["flags"]["publish_camera_coordinates"]
 
