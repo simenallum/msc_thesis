@@ -3,8 +3,8 @@
 run_perception_master=true
 run_platform_tracker=true
 run_segmentation=true
-run_search=true
-start_roscore=true
+run_search=false
+start_roscore=false
 
 
 tmux new-session -d
