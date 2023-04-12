@@ -131,6 +131,22 @@ QUAlISYS_TOPICS="/qualisys/Anafi/odom \
 GNC_TOPICS="/guidance/pure_pursuit/velocity_reference \
         /guidance/pid/velocity_reference"
 
+EVAL_SEG_TOPICS="/SEGMASK_with_SP \
+        /SEGMASK_dice_score \
+        /SEGMASK_percentage_DL_mask_used \
+        /anafi/image \
+        /anafi/gnss_location \
+        /anafi/height \
+        /anafi/pose \
+        /anafi/rpy \
+        /tf \
+        /tf_static \
+        /anafi/ned_pos_from_gnss \
+        /segmentation/safe_points/camera_frame \
+        /segmentation/safe_points/world_frame \
+        /segmentation/dl_mask \
+        /segmentation/offline_mask"
+
 STANDARD_TOPICS="$ANAFI_OUTPUT_TOPICS \
         $ANAFI_CMD_TOPICS \
         $DARKNET_TOPICS \
@@ -162,4 +178,8 @@ elif [[ $ENV == "test_PT" ]]; then
     echo "Rosbagging all topics"
     rosbag record -O $OUTPUT_DIR/$TIME \
         $ANAFI_PERCEPTION_RELEVANT_TOPICS
+elif [[ $ENV == "seg_eval" ]]; then
+    echo "Rosbagging segmenation eval topics"
+    rosbag record -O $OUTPUT_DIR/$TIME \
+        $EVAL_SEG_TOPICS
 fi
