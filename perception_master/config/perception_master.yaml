@@ -3,6 +3,7 @@ topics:
     safe_points_world_coord: "/segmentation/safe_points/world_frame"
     tracks_world_coord: "/search/tracks/world_coordinates"
     platform_EKF: "/estimate/ekf"
+    GNSS: "/anafi/gnss_location"
 
   output:
     detected_person: "/perception/detected_person"
@@ -19,4 +20,11 @@ settings:
   radius_of_acceptance_new_FO_detections: 5
   critical_level_distances: [0, 5, 30]
   track_confidence_threshold: 0.8
-  radius_of_acceptance_new_safe_points: 0.2
+  radius_of_acceptance_new_safe_points: 5
+  GNSS_saving_interval: 5
+
+temp_filepaths:
+  safe_points: "/home/msccomputer/catkin_ws/src/msc_thesis/perception_master/tempfiles/temp_safe_points.csv"
+  human_points: "/home/msccomputer/catkin_ws/src/msc_thesis/perception_master/tempfiles/temp_human_points.csv"
+  FO_points: "/home/msccomputer/catkin_ws/src/msc_thesis/perception_master/tempfiles/temp_FO_points.csv"
+  map_filepath: "/home/msccomputer/catkin_ws/src/msc_thesis/perception_master/tempfiles/gnss_points.html"

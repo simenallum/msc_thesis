@@ -4,16 +4,16 @@ import rospy
 import os
 import yaml
 import sys
-import time
-from cv_bridge import CvBridge
 import numpy as np
-import cv2
-from scipy.spatial.transform import Rotation
+import folium
+from folium.plugins import MarkerCluster
+import pandas as pd
 
+from sensor_msgs.msg import NavSatFix
 from geometry_msgs.msg import PointStamped, PoseWithCovarianceStamped
 from pix2geo.msg import TrackWorldCoordinate
 from perception_master.msg import DetectedPerson
-from std_srvs.srv import SetBool, SetBoolRequest, SetBoolResponse
+from std_srvs.srv import SetBool, SetBoolRequest
 
 from perception_master_utils import utils
 
@@ -57,7 +57,17 @@ class Perception_master:
 
 		# Safe point generation
 		self._radius_of_acceptance_new_safe_points = self.config["settings"]["radius_of_acceptance_new_safe_points"]
-		self._safe_points_table = []
+		self._safe_points_list = []
+
+		# GNSS convertion
+		self._NED_frame_origin = [None, None, None]
+		self._gnss_drone_coordinates = []
+		self._GNSS_safe_points_tempfile = self.config["temp_filepaths"]["safe_points"]
+		self._GNSS_humans_tempfile = self.config["temp_filepaths"]["human_points"]
+		self._GNSS_FO_tempfile = self.config["temp_filepaths"]["FO_points"]
+
+		self._timer = rospy.Timer(rospy.Duration(self.config["settings"]["GNSS_saving_interval"]), self._save_points_as_gnss_timer_callback)
+
 
 		rospy.loginfo("[Segmenation master]: All parameters initalized!")
 
@@ -81,6 +91,12 @@ class Perception_master:
 			self._new_platform_EKF_callback
 		)
 
+		rospy.Subscriber(
+			self.config["topics"]["input"]["GNSS"], 
+			NavSatFix, 
+			self._new_GNSS_measurement_callback
+		)
+
 	def _initalize_services(self):
 		self._AT_node_activation_name = self.config["services"]["AT_node_activation_name"]
 		self._DNN_node_activation_name = self.config["services"]["DNN_node_activation_name"]
@@ -101,6 +117,21 @@ class Perception_master:
 		self._activate_DNN_node_proxy = rospy.ServiceProxy(self._DNN_node_activation_name, SetBool)
 		self._activate_GNSS_node_proxy = rospy.ServiceProxy(self._GNSS_node_activation_name, SetBool)
 
+	def _save_points_as_gnss_timer_callback(self, event):
+		
+		if len(self._safe_points_list) > 0:
+			safe_points_gnss = utils.convert_ned_list_to_gnss_list(self._NED_frame_origin, self._safe_points_list)
+			utils.save_np_list_as_csv(self._GNSS_safe_points_tempfile, np.array(safe_points_gnss))
+
+		human_points_ned_list = utils.get_dict_values_as_list(self._human_table)
+		if len(human_points_ned_list) > 0:
+			human_points_gnss = utils.convert_ned_list_to_gnss_list(self._NED_frame_origin, human_points_ned_list)
+			utils.save_np_list_as_csv(self._GNSS_humans_tempfile, np.array(human_points_gnss))
+
+		FO_points_ned_list = utils.get_dict_values_as_list(self._FO_table)
+		if len(FO_points_ned_list) > 0:
+			FO_points_gnss = utils.convert_ned_list_to_gnss_list(self._NED_frame_origin, FO_points_ned_list)
+			utils.save_np_list_as_csv(self._GNSS_FO_tempfile, np.array(FO_points_gnss))
 
 	def _setup_publishers(self):
 		self._detected_person_pub = rospy.Publisher(
@@ -115,16 +146,22 @@ class Perception_master:
 			queue_size=10
 		)
 
+	def _new_GNSS_measurement_callback(self, GNSS_meas):
+		if None in (self._NED_frame_origin):
+			self._NED_frame_origin = [GNSS_meas.latitude, GNSS_meas.longitude, GNSS_meas.altitude]
+		else:
+			self._gnss_drone_coordinates.append([GNSS_meas.latitude, GNSS_meas.longitude, GNSS_meas.altitude])
+
 	def _new_safe_point_callback(self, safe_point_msg):
 
 		new_safe_point = self._extract_point_msg(safe_point_msg)
 		point_in_table = utils.is_point_within_threshold_list(
 								new_safe_point, 
 							   	self._radius_of_acceptance_new_safe_points,
-								self._safe_points_table)
+								self._safe_points_list)
 		
 		if not point_in_table:
-			self._safe_points_table.append(new_safe_point)
+			self._safe_points_list.append(new_safe_point)
 
 			self._publish_safe_point(new_safe_point, safe_point_msg.header)
 
@@ -271,7 +308,49 @@ class Perception_master:
 		self._detected_person_pub.publish(human_detection_msg)
 
 	def _shutdown(self):
-		rospy.loginfo("[Perception master] Shutting down node")
+		rospy.loginfo("[Perception master]: Shutting down node")
+
+		# Create a folium map centered on the first NED frame origin
+		map = folium.Map(location=[self._NED_frame_origin[0], self._NED_frame_origin[1]], zoom_start=10)
+
+		# Create a marker cluster for the safe points
+		safe_points_cluster = MarkerCluster(name='Safe points').add_to(map)
+
+		# Add markers for each safe point to the marker cluster
+		safe_points = pd.read_csv(self._GNSS_safe_points_tempfile, names=['LATITUDE', 'LONGITUDE', 'ALTITUDE'], sep=',')
+		for lat, lon in zip(safe_points['LATITUDE'], safe_points['LONGITUDE']):
+			folium.Marker(location=[lat, lon], icon=folium.Icon(color='red')).add_to(safe_points_cluster)
+
+		# Create a marker cluster for the FO points
+		FO_points_cluster = MarkerCluster(name='FO points').add_to(map)
+
+		# Add markers for each FO point to the marker cluster
+		FO_points = pd.read_csv(self._GNSS_FO_tempfile, names=['LATITUDE', 'LONGITUDE', 'ALTITUDE'], sep=',')
+		for lat, lon in zip(FO_points['LATITUDE'], FO_points['LONGITUDE']):
+			folium.Marker(location=[lat, lon], icon=folium.Icon(color='blue')).add_to(FO_points_cluster)
+
+		# Create a marker cluster for the human points
+		human_points_cluster = MarkerCluster(name='Human points').add_to(map)
+
+		# Add markers for each human point to the marker cluster
+		human_points = pd.read_csv(self._GNSS_humans_tempfile, names=['LATITUDE', 'LONGITUDE', 'ALTITUDE'], sep=',')
+		for lat, lon in zip(human_points['LATITUDE'], human_points['LONGITUDE']):
+			folium.Marker(location=[lat, lon], icon=folium.Icon(color='green')).add_to(human_points_cluster)
+
+
+		# Create a feature group for the drone trajectory
+		drone_polyline_group = folium.FeatureGroup(name='Drone Trajectory').add_to(map)
+		drone_loc_np = np.array(self._gnss_drone_coordinates)
+		drone_polyline = folium.PolyLine(locations=drone_loc_np[:,:2], color='orange', weight=2, opacity=0.7)
+		drone_polyline.add_to(drone_polyline_group)
+	
+		# Add a legend to the map
+		folium.LayerControl().add_to(map)
+
+		# Save the map as an HTML file
+		map.save(self.config["temp_filepaths"]["map_filepath"])
+
+		rospy.loginfo("[Perception master] Map saved!")
 
 	def start(self):
 		rospy.loginfo("[Perception master]: Starting node")

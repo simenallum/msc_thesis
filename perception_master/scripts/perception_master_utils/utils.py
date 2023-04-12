@@ -1,5 +1,7 @@
 import numpy as np
 import math
+import pymap3d
+import csv
 
 def is_point_within_threshold_dict(point, threshold, dictionary: dict):
     for value in dictionary.values():
@@ -44,3 +46,28 @@ def calculate_critical_level(distance, critical_levels):
         return 1
     
     return 0
+
+def get_dict_values_as_list(dict):
+    ret_list = []
+    for value in dict.values():
+        ret_list.append(value)
+
+    return ret_list
+
+def convert_ned_list_to_gnss_list(ned_frame_origin, ned_list):
+
+    ell_wgs84 = pymap3d.Ellipsoid('wgs84')
+    lat_origin, lon_origin, h_origin = ned_frame_origin
+
+    gnss_list = []
+    for points in ned_list:
+        lat1, lon1, h1 = pymap3d.ned2geodetic(points[0], points[1], points[2], \
+                                            lat_origin, lon_origin, h_origin, \
+                                            ell=ell_wgs84, deg=True)  # wgs84 ellisoid
+        
+        gnss_list.append([lat1, lon1, h1])
+
+    return gnss_list
+
+def save_np_list_as_csv(outfile, np_array):
+    np.savetxt(outfile, np_array, delimiter=',', newline="\n")
