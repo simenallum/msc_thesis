@@ -39,7 +39,7 @@ def _pixel_to_camera_coordinates(center_px, drone_pos, camera_focal_length, imag
   d_y = y_c - center_px[1]
 
   # Find altitude from similar triangles
-  z_camera = -drone_pos[2]
+  z_camera = drone_pos[0]
 
   # Find x and y coordiantes using similar triangles as well. The signs are
   # used so that the x-coordinate is positive to the right and the y-coordinate
@@ -81,9 +81,9 @@ def calculate_detection_location(camera_fov, detection_pixels, drone_position, i
 	y_displacement_degrees_from_center = y_resolution_degrees_per_pixel * y_displacement_degrees
 
 	# Transform the coordinates to the camera coordinate system
-	x_camera = -(drone_position[2] * math.tan(math.radians(x_displacement_degrees_from_center)))
-	y_camera = -(drone_position[2] * math.tan(math.radians(y_displacement_degrees_from_center)))
-	z_camera = -drone_position[2]
+	x_camera = (drone_position[0] * math.tan(math.radians(x_displacement_degrees_from_center)))
+	y_camera = (drone_position[0] * math.tan(math.radians(y_displacement_degrees_from_center)))
+	z_camera = drone_position[0]
 
 	return (x_camera, y_camera, z_camera)
 
