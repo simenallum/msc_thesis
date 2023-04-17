@@ -66,19 +66,13 @@ def find_safe_areas(image: np.ndarray, window_size: int, stride: int) -> np.ndar
 
     safe_loc = np.array(safe_loc)
 
-    # Calculate the distances of the safe windows to the center of the image
-    if len(safe_loc != 0):
-      distances = np.linalg.norm(safe_loc - center, axis=1)
-
-      # Sort the safe windows by their distance to the center of the image
-      sorted_indices = np.argsort(distances)
-      sorted_positions = safe_loc[sorted_indices]
-
-      return sorted_positions
-
+    if len(safe_loc) != 0:
+        distances = np.linalg.norm(safe_loc - center, axis=1)
+        min_index = np.argmin(distances)
+        closest_safe_window = safe_loc[min_index]
+        return closest_safe_window
     else:
-      return None
-
+        return None
 
 if __name__ == '__main__':
     import cv2

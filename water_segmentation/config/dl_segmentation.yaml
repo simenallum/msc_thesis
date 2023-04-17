@@ -12,3 +12,5 @@ model_settings:
   
 services:
   make_mask: make_dl_mask
+
+debug: True 

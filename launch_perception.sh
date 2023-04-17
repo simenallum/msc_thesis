@@ -1,6 +1,6 @@
 #!/bin/bash
 
-run_perception_master=true
+run_perception_master=true # Note that platform tracker has to be true if perception master is true
 run_platform_tracker=true
 run_segmentation=true
 run_search=false

@@ -14,6 +14,8 @@ from water_segmentation.srv import sendMask, sendMaskResponse, sendMaskRequest
 import sensor_msgs.msg
 from geometry_msgs.msg import PointStamped
 from std_msgs.msg import Float64
+from anafi_uav_msgs.msg import Float32Stamped
+
 
 from segmentation_master_utils import utils
 import matplotlib.pyplot as plt
@@ -50,8 +52,7 @@ class Segmentation_master:
 		self._use_offline_map_segmentation = self.config["settings"]["enable_offline_map_segmentation"]
 		self._use_dl_segmentation = self.config["settings"]["enable_dl_segmentation"]
 		self._min_altitude_to_generate_safe_points = self.config["settings"]["min_altitude_to_generate_safe_points"]
-
-		self._dice_threshold = self.config["settings"]["dice_threshold"]
+		self._min_altitude_to_use_dl_segmentation = self.config["settings"]["min_altitude_to_use_dl_segmentation"]
 		self._safe_metric_dist = self.config["settings"]["min_safe_metric_dist"]
 
 		self._debug = self.config["debug"]
@@ -72,6 +73,7 @@ class Segmentation_master:
 		)
 
 		self._last_gnss_pos = [None, None, None]
+		self._last_height_meas = [None]
 		
 		rospy.loginfo("[Segmenation master]: All parameters loaded!")
 
@@ -81,6 +83,12 @@ class Segmentation_master:
 			self.config["topics"]["input"]["gnss"], 
 			sensor_msgs.msg.NavSatFix, 
 			self._new_gnss_callback
+		)
+
+		rospy.Subscriber(
+			self.config["topics"]["input"]["height"],
+			Float32Stamped,
+			self._new_height_CB
 		)
 
 	def _initalize_services(self):
@@ -127,12 +135,6 @@ class Segmentation_master:
 				queue_size=10
 			)
 
-			self.dice_score_pub = rospy.Publisher(
-				"SEGMASK_dice_score",
-				Float64,
-				queue_size=10
-			)
-
 			self.percentage_DL_mask_used_pub = rospy.Publisher(
 				"SEGMASK_percentage_DL_mask_used",
 				Float64,
@@ -145,6 +147,9 @@ class Segmentation_master:
 			gnss_msg.longitude,
 			gnss_msg.altitude
 		]
+
+	def _new_height_CB(self, meas):
+		self._last_height_meas = meas.data
 	
 
 	def _timer_callback(self, event):
@@ -152,7 +157,7 @@ class Segmentation_master:
 			rospy.logwarn(f"Can not create segmentation mask. Missing gnss-measurements")
 			return
 
-		if self._last_gnss_pos[2] < self._min_altitude_to_generate_safe_points:
+		if (self._last_height_meas < self._min_altitude_to_generate_safe_points) and (-self._last_gnss_pos[2] < self._min_altitude_to_generate_safe_points):
 			return
 		
 		# create a request object
@@ -178,15 +183,13 @@ class Segmentation_master:
 
 
 		if self._use_dl_segmentation and self._use_offline_map_segmentation:
-			# Check if the two masks overlap roughly -> indicates DL seg mask is usable
-			dice_score = utils.dice_coefficient(dl_mask_image, map_mask_image)
-			if (dice_score > self._dice_threshold):
+
+			if self._last_height_meas > self._min_altitude_to_use_dl_segmentation:
 				mask = dl_mask_image
 
 				if self._debug:
 					self._DL_mask_usage_counter.append(1)
 
-			# DL map is too risky to use -> use the more safe map seg mask
 			else:
 				mask = map_mask_image
 
@@ -194,9 +197,6 @@ class Segmentation_master:
 					self._DL_mask_usage_counter.append(0)
 
 			if self._debug:
-				msg = Float64()
-				msg.data = dice_score
-				self.dice_score_pub.publish(msg)
 
 				count_ones = self._DL_mask_usage_counter.count(1)
 				percentage_ones = (count_ones / len(self._DL_mask_usage_counter)) * 100
@@ -210,24 +210,31 @@ class Segmentation_master:
 		elif self._use_dl_segmentation:
 			mask = dl_mask_image
 
-		safe_dist_px = utils.convert_save_dist_to_px(self._focal_length, self._last_gnss_pos[2], self._safe_metric_dist)
+		safe_dist_px = utils.convert_save_dist_to_px(self._focal_length, self._last_height_meas, self._safe_metric_dist)
 
 		if safe_dist_px > min(self._camera_resolution):
-			return
-		
-		safe_points = utils.find_safe_areas(mask, safe_dist_px, stride=self._stride)
+				return
+			
+		else:
+			start_time = time.time()
+			safe_points = utils.find_safe_areas(mask, safe_dist_px, stride=self._stride)
+			rospy.logdebug("Time taken to find SP: {:.2f} seconds".format(time.time() - start_time))
 
 		if not (np.any(safe_points) == None):
-			self._publish_safe_point(safe_points[0])
+			self._publish_safe_point(safe_points)
 
 			if self._debug:
+				# Convert the mask to an RGB color image
+				mask_rgb = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
+
 				# Define the center of the circle
-				center = (int(safe_points[0][1]), int(safe_points[0][0]))
+				center = (int(safe_points[1]), int(safe_points[0]))
 
-				# Draw the circle on the image
-				cv2.circle(mask, center, 10, 150, -1)
+				# Draw a red circle at the center
+				cv2.circle(mask_rgb, center, 10, (255, 0, 0), -1)
 
-				self.mask_pub.publish(self.bridge.cv2_to_imgmsg(mask, "mono8"))
+				# Publish the image as a uint8
+				self.mask_pub.publish(self.bridge.cv2_to_imgmsg(mask_rgb, "rgb8"))
 
 
 	def _prepare_out_message(self, point):

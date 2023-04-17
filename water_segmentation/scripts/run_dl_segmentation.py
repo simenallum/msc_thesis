@@ -11,6 +11,9 @@ import torch.nn.functional as F
 import numpy as np
 from PIL import Image
 from torchvision import transforms
+import cv2
+
+from map_segmentation_utils import utils
 
 from water_segmentation.srv import sendMask, sendMaskResponse
 import sensor_msgs.msg
@@ -52,7 +55,8 @@ class DL_segmentation:
 		self.bilinear = self.config['model_settings']['bilinear']
 		self.model_type = self.config['model_settings']['model_type']
 
-		self._last_image = None
+		self._last_image = [None]
+		self._debug = self.config['debug']
 
 	def _setup_subscribers(self):
 		rospy.Subscriber(
@@ -115,6 +119,14 @@ class DL_segmentation:
 		rospy.logdebug("Time taken: {:.2f} seconds".format(time.time() - start_time))
 
 		mask_image = mask_to_image(mask, self.mask_values)
+
+		if self._debug:
+			# Create and save debug image
+			if not np.any(self._last_image) == None:
+				masked_image = utils.apply_mask_overlay(np.asarray(self._last_image), mask_image)
+
+				cv2.imwrite('/home/msccomputer/catkin_ws/src/msc_thesis/water_segmentation/data/debug/dl_overlays/{}.jpg'.format(time.strftime('%Y%m%d-%H%M%S')), masked_image)
+
 
 		self._publish_mask_image(mask_image)
 

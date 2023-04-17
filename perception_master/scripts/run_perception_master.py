@@ -314,28 +314,28 @@ class Perception_master:
 		map = folium.Map(location=[self._NED_frame_origin[0], self._NED_frame_origin[1]], zoom_start=10)
 
 		# Create a marker cluster for the safe points
-		safe_points_cluster = MarkerCluster(name='Safe points').add_to(map)
+		safe_points_cluster = folium.FeatureGroup(name='Safe points').add_to(map)
 
-		# Add markers for each safe point to the marker cluster
+		# Add circle markers for each safe point to the feature group
 		safe_points = pd.read_csv(self._GNSS_safe_points_tempfile, names=['LATITUDE', 'LONGITUDE', 'ALTITUDE'], sep=',')
 		for lat, lon in zip(safe_points['LATITUDE'], safe_points['LONGITUDE']):
-			folium.Marker(location=[lat, lon], icon=folium.Icon(color='red')).add_to(safe_points_cluster)
+			folium.CircleMarker(location=[lat, lon], radius=2, color='red', fill_color='red', fill_opacity=0.8).add_to(safe_points_cluster)
 
 		# Create a marker cluster for the FO points
-		FO_points_cluster = MarkerCluster(name='FO points').add_to(map)
+		FO_points_cluster = folium.FeatureGroup(name='FO points').add_to(map)
 
-		# Add markers for each FO point to the marker cluster
+		# Add circle markers for each FO point to the feature group
 		FO_points = pd.read_csv(self._GNSS_FO_tempfile, names=['LATITUDE', 'LONGITUDE', 'ALTITUDE'], sep=',')
 		for lat, lon in zip(FO_points['LATITUDE'], FO_points['LONGITUDE']):
-			folium.Marker(location=[lat, lon], icon=folium.Icon(color='blue')).add_to(FO_points_cluster)
+			folium.CircleMarker(location=[lat, lon], radius=2, color='blue', fill_color='blue', fill_opacity=0.8).add_to(FO_points_cluster)
 
 		# Create a marker cluster for the human points
-		human_points_cluster = MarkerCluster(name='Human points').add_to(map)
+		human_points_cluster = folium.FeatureGroup(name='Human points').add_to(map)
 
-		# Add markers for each human point to the marker cluster
+		# Add circle markers for each human point to the feature group
 		human_points = pd.read_csv(self._GNSS_humans_tempfile, names=['LATITUDE', 'LONGITUDE', 'ALTITUDE'], sep=',')
 		for lat, lon in zip(human_points['LATITUDE'], human_points['LONGITUDE']):
-			folium.Marker(location=[lat, lon], icon=folium.Icon(color='green')).add_to(human_points_cluster)
+			folium.CircleMarker(location=[lat, lon], radius=2, color='green', fill_color='green', fill_opacity=0.8).add_to(human_points_cluster)
 
 
 		# Create a feature group for the drone trajectory
@@ -343,7 +343,7 @@ class Perception_master:
 		drone_loc_np = np.array(self._gnss_drone_coordinates)
 		drone_polyline = folium.PolyLine(locations=drone_loc_np[:,:2], color='orange', weight=2, opacity=0.7)
 		drone_polyline.add_to(drone_polyline_group)
-	
+
 		# Add a legend to the map
 		folium.LayerControl().add_to(map)
 
@@ -351,6 +351,7 @@ class Perception_master:
 		map.save(self.config["temp_filepaths"]["map_filepath"])
 
 		rospy.loginfo("[Perception master] Map saved!")
+
 
 	def start(self):
 		rospy.loginfo("[Perception master]: Starting node")

@@ -11,7 +11,7 @@ from scipy.spatial.transform import Rotation
 
 from yolov8_ros.msg import BoundingBox, BoundingBoxes
 from pix2geo.msg import TrackWorldCoordinate
-
+from anafi_uav_msgs.msg import Float32Stamped
 class Pix2Geo:
 
 	def __init__(self, config_file=None, deepsort_params=None):
@@ -37,6 +37,7 @@ class Pix2Geo:
 	def _initalize_parameters(self):
 		self._last_compass_meas = [None]
 		self._last_gnss_meas = [None]
+		self._last_height_meas = [None]
 
 		self._flag_publish_camera_frame_detections = self.config["flags"]["publish_camera_coordinates"]
 
@@ -74,6 +75,12 @@ class Pix2Geo:
 			self._new_NED_gnss_meas_callback
 		)
 
+		rospy.Subscriber(
+			"/anafi/height",
+			Float32Stamped,
+			self._new_height_CB
+		)
+
 	def _setup_publishers(self):
 		self._track_world_coord_pub = rospy.Publisher(
 			self.config["topics"]["output"]["track_world_coordinate"], 
@@ -101,7 +108,7 @@ class Pix2Geo:
 			)
 
 	def _new_tracks_callback(self, bounding_boxes):
-		if None in (self._last_gnss_meas + self._last_compass_meas):
+		if None in (self._last_height_meas + self._last_gnss_meas + self._last_compass_meas):
 			rospy.logwarn(f"Can not transform safe point. Missing either compass or gnss-measurements")
 			return
 		
@@ -117,14 +124,14 @@ class Pix2Geo:
 			detection_camera_frame_fov = pix2geo_utils.utils.calculate_detection_location(
 				camera_fov=self._camera_fov,
 				detection_pixels=center,
-				drone_position=self._last_gnss_meas,
+				drone_position=self._last_height_meas,
 				img_height=self._img_height,
 				img_width=self._img_width
 			)
 
 			detection_camera_frame_tria = pix2geo_utils.utils._pixel_to_camera_coordinates(
 				center_px=center,
-				drone_pos=self._last_gnss_meas,
+				drone_pos=self._last_height_meas,
 				camera_focal_length=self._camera_focal_length,
 				image_center=self._image_center
 			)
@@ -143,7 +150,7 @@ class Pix2Geo:
 			self._publish_track_world_coordinate(detection_world_frame, track_id, track_probability, track_class)
 
 	def _new_safe_points_callback(self, point_msg):
-		if None in (self._last_gnss_meas + self._last_compass_meas):
+		if None in (self._last_height_meas + self._last_gnss_meas + self._last_compass_meas):
 			rospy.logwarn(f"Can not transform safe point. Missing either compass or gnss-measurements")
 			return
 		
@@ -155,11 +162,10 @@ class Pix2Geo:
 
 		safe_point_camera_frame_tria = pix2geo_utils.utils._pixel_to_camera_coordinates(
 			center_px=center,
-			drone_pos=self._last_gnss_meas,
+			drone_pos=self._last_height_meas,
 			camera_focal_length=self._camera_focal_length,
 			image_center=self._image_center
 		)
-			
 
 		safe_point_world_frame = pix2geo_utils.utils.transform_point_cam_to_world(
 			safe_point_camera_frame_tria,
@@ -198,6 +204,9 @@ class Pix2Geo:
 
 	def _new_NED_gnss_meas_callback(self, measurment):
 		self._last_gnss_meas = [measurment.point.x, measurment.point.y, measurment.point.z]
+
+	def _new_height_CB(self, meas):
+		self._last_height_meas = [meas.data]
 
 	def _extract_bbs(self, bboxes):
 		result = []

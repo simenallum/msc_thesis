@@ -9,9 +9,13 @@ from cv_bridge import CvBridge
 import numpy as np
 from scipy.spatial.transform import Rotation
 
+
 from water_segmentation.srv import sendMask, sendMaskResponse
 import sensor_msgs.msg
 import geometry_msgs.msg
+from PIL import Image
+import cv2
+
 
 from map_segmentation_utils import utils
 
@@ -54,6 +58,9 @@ class Map_segmentation:
 			self._camera_hfov
 		)
 
+		self._debug = self.config['debug']
+		self._last_image = None
+
 		self._map_resolution = (self.config['offline_map']['map_resolution_px']['width'],
 			  					self.config['offline_map']['map_resolution_px']['height'])
 		self._large_map_radius = self.config['offline_map']['map_radius']
@@ -79,6 +86,18 @@ class Map_segmentation:
 			geometry_msgs.msg.PoseStamped, 
 			self._new_drone_pose_callback
 		)
+
+		if self._debug:
+			rospy.Subscriber(
+			self.config["topics"]["input"]["drone_image"], 
+			sensor_msgs.msg.Image, 
+			self._new_image_cb
+		)
+			
+	def _new_image_cb(self, msg):
+		image_raw = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+
+		self._last_image = image_raw
 
 	def _initalize_services(self):
 		self._srv_make_mask = rospy.Service(
@@ -147,6 +166,13 @@ class Map_segmentation:
 
 		# Publish the final image mask
 		self._publish_mask_image(mask_img)
+
+		
+		if self._debug:
+			# Create and save debug image
+			masked_image = utils.apply_mask_overlay(self._last_image, mask_img)
+
+			cv2.imwrite('/home/msccomputer/catkin_ws/src/msc_thesis/water_segmentation/data/debug/offline_map_overlays/{}.jpg'.format(time.strftime('%Y%m%d-%H%M%S')), masked_image)
 
 		# Make responce for service call
 		res = sendMaskResponse()

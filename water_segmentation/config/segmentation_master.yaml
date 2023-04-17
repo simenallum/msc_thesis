@@ -5,6 +5,7 @@ services:
 topics:
   input:
     gnss: "/anafi/gnss_location"
+    height: "/anafi/height"
   output: 
     safe_points: "/segmentation/safe_points/camera_frame"
 
@@ -12,9 +13,9 @@ settings:
   interval_between_generation: 1.0
   enable_offline_map_segmentation: True
   enable_dl_segmentation: True
-  dice_threshold: 0.8
-  min_safe_metric_dist: 0.2
+  min_altitude_to_use_dl_segmentation: 10
+  min_safe_metric_dist: 5
   stride_in_search: 10
-  min_altitude_to_generate_safe_points: 1
+  min_altitude_to_generate_safe_points: 2
 
 debug: True
