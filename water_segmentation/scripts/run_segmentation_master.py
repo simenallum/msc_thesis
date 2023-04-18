@@ -3,7 +3,6 @@
 import rospy
 import os
 import yaml
-from datetime import datetime, timedelta
 import sys
 import time
 from cv_bridge import CvBridge
