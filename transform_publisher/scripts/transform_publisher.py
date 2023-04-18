@@ -11,7 +11,7 @@ from scipy.spatial.transform import Rotation
 
 import tf2_geometry_msgs.tf2_geometry_msgs
 
-from geometry_msgs.msg import QuaternionStamped, TransformStamped, PointStamped
+from geometry_msgs.msg import PoseStamped, TransformStamped, PointStamped
 
 
 class transformPublisher():
@@ -25,7 +25,7 @@ class transformPublisher():
 			self._new_point_callback
 		)
 
-		rospy.Subscriber("/anafi/attitude", QuaternionStamped,
+		rospy.Subscriber("/anafi/pose", PoseStamped,
 			self._new_pose_callback
 		)
 
@@ -43,10 +43,10 @@ class transformPublisher():
 
 	def _new_pose_callback(self, msg):
 		quaternions=[
-			msg.quaternion.x,
-			msg.quaternion.y,
-			msg.quaternion.z,
-			msg.quaternion.w
+			msg.pose.orientation.x,
+			msg.pose.orientation.y,
+			msg.pose.orientation.z,
+			msg.pose.orientation.w
 		]
 		
 		rot = Rotation.from_quat(quaternions)
