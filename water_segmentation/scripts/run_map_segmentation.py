@@ -8,7 +8,7 @@ import time
 from cv_bridge import CvBridge
 import numpy as np
 from scipy.spatial.transform import Rotation
-
+from anafi_uav_msgs.msg import Float32Stamped
 
 from water_segmentation.srv import sendMask, sendMaskResponse
 import sensor_msgs.msg
@@ -58,6 +58,8 @@ class Map_segmentation:
 			self._camera_hfov
 		)
 
+		rospy.loginfo(self._camera_fov)
+
 		self._debug = self.config['debug']
 		self._last_image = None
 
@@ -85,6 +87,12 @@ class Map_segmentation:
 			self.config["topics"]["input"]["drone_pose"], 
 			geometry_msgs.msg.PoseStamped, 
 			self._new_drone_pose_callback
+		)
+
+		rospy.Subscriber(
+			self.config["topics"]["input"]["height"], 
+			Float32Stamped, 
+			self._new_drone_height_cb
 		)
 
 		if self._debug:
@@ -115,6 +123,9 @@ class Map_segmentation:
 			queue_size=10
 		)
 
+	def _new_drone_height_cb(self, msg):
+		self._last_height_meas = msg.data
+
 	def _new_gnss_callback(self, gnss_msg):
 		self._last_gnss_pos = [
 			gnss_msg.latitude,
@@ -137,8 +148,8 @@ class Map_segmentation:
 
 	def _handle_create_mask(self, req):
 		# Calculate the ground coverage based on camera field of view and drone altitude
-		ground_coverage = utils.calculate_ground_coverage(camera_fov=self._camera_fov, altitude=self._last_gnss_pos[2])
-
+		ground_coverage = utils.calculate_ground_coverage(camera_fov=self._camera_fov, altitude=self._last_height_meas)
+		
 		# Calculate the bounding box for the large-scale map based on the current GNSS position and prefered map radius
 		large_scale_bbox_gpd = utils.calculate_gnss_bbox((self._last_gnss_pos[0], self._last_gnss_pos[1]), self._large_map_radius)
 
@@ -164,15 +175,15 @@ class Map_segmentation:
 
 		mask_img = utils.mask_to_image(scaled_mask, mask_values=[0, 255])
 
-		# Publish the final image mask
-		self._publish_mask_image(mask_img)
-
 		
 		if self._debug:
 			# Create and save debug image
 			masked_image = utils.apply_mask_overlay(self._last_image, mask_img)
 
 			cv2.imwrite('/home/msccomputer/catkin_ws/src/msc_thesis/water_segmentation/data/debug/offline_map_overlays/{}.jpg'.format(time.strftime('%Y%m%d-%H%M%S')), masked_image)
+			
+		# Publish the final image mask
+		self._publish_mask_image(mask_img)
 
 		# Make responce for service call
 		res = sendMaskResponse()

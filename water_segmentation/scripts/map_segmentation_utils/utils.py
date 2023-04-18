@@ -129,6 +129,10 @@ def extract_metric_map(mask: np.array, map_resolution: tuple, map_radius: float,
     n_x = int(ground_coverage[0] / pixels_per_meter_x)
     n_y = int(ground_coverage[1] / pixels_per_meter_y)
 
+    # Divide by two to get numbr of px in each direction from center
+    n_x = n_x // 2
+    n_y = n_y // 2
+
     # Calculate the x and y coordinates of the center of the image
     center_x = width // 2
     center_y = height // 2

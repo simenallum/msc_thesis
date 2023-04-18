@@ -28,8 +28,35 @@ def dice_coefficient(mask1: np.array, mask2: np.array) -> float:
     mask2 = np.invert(mask2)
 
     intersection = np.logical_and(mask1, mask2)
-    dice_coeff = 2 * np.sum(intersection) / (np.sum(mask1) + np.sum(mask2))
+    try:
+        dice_coeff = 2 * np.sum(intersection) / (np.sum(mask1) + np.sum(mask2))
+    except:
+        dice_coeff = 0.0
     return dice_coeff
+
+def compare_image_masks(image1, image2):
+    """
+    Compare two image masks represented as NumPy arrays and calculate the percentage
+    of pixels with the same values (0 or 255) in both images.
+    
+    Args:
+        image1 (numpy.ndarray): NumPy array representing the first image mask.
+        image2 (numpy.ndarray): NumPy array representing the second image mask.
+        
+    Returns:
+        float: Percentage of same pixels.
+    """
+    # Check if images have the same shape
+    if image1.shape != image2.shape:
+        raise ValueError("Input images must have the same shape")
+
+    # Count the number of pixels with the same values
+    same_pixels = np.equal(image1, image2)
+
+    # Calculate the percentage of same pixels
+    percentage = (np.sum(same_pixels) / float(image1.size)) * 100
+
+    return percentage
 
 
 def convert_save_dist_to_px(focal_length: float, drone_altitude: float, safe_metric_distance: float) -> int:
@@ -52,7 +79,7 @@ def find_safe_areas(image: np.ndarray, window_size: int, stride: int) -> np.ndar
 
     # Check if the center window is safe
     if np.sum(np.multiply(center_window, window)) == window_size ** 2:
-        return np.array([center])
+        return np.array(center)
 
     # Split the binary image into windows
     windows = view_as_windows(binary_img, window.shape, step=stride)
@@ -72,7 +99,7 @@ def find_safe_areas(image: np.ndarray, window_size: int, stride: int) -> np.ndar
         closest_safe_window = safe_loc[min_index]
         return closest_safe_window
     else:
-        return None
+        return [None]
 
 if __name__ == '__main__':
     import cv2

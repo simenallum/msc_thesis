@@ -9,6 +9,7 @@ topics:
   input:
     gnss: "/anafi/gnss_location"
     drone_pose: "/anafi/pose"
+    height: "/anafi/height"
     drone_image: "/anafi/image" # Only used for debugging
   output: 
     water_mask: "/segmentation/offline_mask"
