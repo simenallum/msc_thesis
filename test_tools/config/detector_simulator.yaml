@@ -9,7 +9,7 @@ publish_detected_image: True
 
 settings:
   class_names: ["human", "floating-objects"]
-  AT_ids: [10, 11]
+  AT_ids: [0, 11]
   detection_confidence: 0.81
 
 

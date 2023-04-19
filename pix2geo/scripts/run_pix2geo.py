@@ -40,7 +40,7 @@ class Pix2Geo:
 		self._last_gnss_meas = [None]
 		self._last_height_meas = [None]
 
-		self._flag_publish_camera_frame_detections = self.config["flags"]["publish_camera_coordinates"]
+		self._debug = self.config["flags"]["debug"]
 
 		self._img_width = rospy.get_param("/drone/camera/img_width")
 		self._img_height = rospy.get_param("/drone/camera/img_height")
@@ -97,7 +97,7 @@ class Pix2Geo:
 			queue_size=10
 		)
 
-		if self._flag_publish_camera_frame_detections:
+		if self._debug:
 			self._track_camera_coord_pub_triangulate = rospy.Publisher(
 				self.config["topics"]["output"]["track_camera_coordinate_triangulate"], 
 				TrackWorldCoordinate, 
@@ -106,6 +106,12 @@ class Pix2Geo:
 
 			self._track_camera_coord_pub_FOV = rospy.Publisher(
 				self.config["topics"]["output"]["track_camera_coordinate_fov"], 
+				TrackWorldCoordinate, 
+				queue_size=10
+			)
+
+			self._track_world_coord_pub_fov = rospy.Publisher(
+				"/search/tracks/world_coordinates/fov", 
 				TrackWorldCoordinate, 
 				queue_size=10
 			)
@@ -141,12 +147,17 @@ class Pix2Geo:
 				image_center=self._image_center
 			)
 			
-			if self._flag_publish_camera_frame_detections:
-				self._publish_track_camera_coordinate(detection_camera_frame_fov, detection_camera_frame_tria, track_id, track_probability, track_class)
 
 			detection_world_frame = self._transformer.camera_to_world_frame(detection_camera_frame_tria, timestamp=bounding_boxes.header.stamp)
 		
 			self._publish_track_world_coordinate(detection_world_frame, track_id, track_probability, track_class)
+
+			if self._debug:
+				self._publish_track_camera_coordinate(detection_camera_frame_fov, detection_camera_frame_tria, track_id, track_probability, track_class)
+
+				detection_world_frame_fov = self._transformer.camera_to_world_frame(detection_camera_frame_fov, timestamp=bounding_boxes.header.stamp)
+				msg = self._prepare_out_message(detection_world_frame_fov, track_id, track_probability, track_class)
+				self._track_world_coord_pub_fov.publish(msg)
 
 	def _new_safe_points_callback(self, point_msg):
 		if None in (self._last_height_meas + self._last_gnss_meas + self._last_compass_meas):

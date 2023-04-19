@@ -23,18 +23,14 @@ EVAL_PIX2GEO_TOPICS="/anafi/image \
         /anafi/height \
         /anafi/pose \
         /anafi/rpy \
-        /tf \
-        /tf_static \
         /anafi/ned_pos_from_gnss \
         /qualisys/AT0/pose \
-        /qualisys/Anafi/pose \
-        /anafi/gnss_ned_in_body_frame \
-        /anafi/attitude"
+        /qualisys/Anafi/pose"
 
 if [[ $ENV == "outside" ]]; then
     echo "Rosbag play outside topics"
-    rosbag play $path  --clock --topics $EVAL_SEG_TOPICS
+    rosbag play $path --clock --topics $EVAL_SEG_TOPICS
 elif [[ $ENV == "eval_pix2geo" ]]; then
     echo "Rosbag play eval pix2geo topics"
-    rosbag play $path  --clock --topics $EVAL_PIX2GEO_TOPICS
+    rosbag play $path --clock --topics $EVAL_PIX2GEO_TOPICS
 fi

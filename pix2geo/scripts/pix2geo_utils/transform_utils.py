@@ -19,14 +19,14 @@ class Transformer():
 
 		def get_height_from_timestamp(self, timestamp):
 			point = PointStamped()
-			point.header.frame_id = "drone_alt"
+			point.header.frame_id = "ground_alt"
 			point.header.stamp = timestamp
 
 			point.point.x = 0
 			point.point.y = 0
 			point.point.z = 0
 
-			altitude_point = self.tfBuffer.transform(point, "ground_alt", rospy.Duration(1))
+			altitude_point = self.tfBuffer.transform(point, "drone_alt", rospy.Duration(1)) # Wait durations set large, however the tf is available at 30Hz
 
 			return altitude_point.point.z
 
@@ -39,7 +39,7 @@ class Transformer():
 			point.point.y = point_list[1]
 			point.point.z = point_list[2]
 
-			world_point = self.tfBuffer.transform(point, "world", rospy.Duration(1))
+			world_point = self.tfBuffer.transform(point, "world", rospy.Duration(1)) # Wait durations set large, however the tf is available at 30Hz
 
 			return [world_point.point.x, world_point.point.y, world_point.point.z]
 

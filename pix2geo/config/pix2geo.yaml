@@ -11,4 +11,4 @@ topics:
     safe_point_world_coordinate: "/segmentation/safe_points/world_frame"
 
 flags:
-  publish_camera_coordinates: True
+  debug: True

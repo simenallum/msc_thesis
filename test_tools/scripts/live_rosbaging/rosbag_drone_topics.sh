@@ -27,24 +27,22 @@ fi
 TIME=$(date +%Y-%m-%d-%H-%M-%S)
 
 EVAL_PIX2GEO="/anafi/image \
-              /anafi/attitude \
               /anafi/gnss_location \
               /anafi/height \
               /anafi/optical_flow_velocities \
               /anafi/polled_body_velocities \
               /anafi/pose \
-              /anafi/odometry \
               /anafi/rpy \
               /tf \
+              /tf_static \
               /anafi/ned_pos_from_gnss \
-              /qualisys/Anafi/odom \
               /qualisys/Anafi/pose \
-              /qualisys/Anafi/velocity \
-              /qualisys/AT0/odom \
               /qualisys/AT0/pose \
-              /qualisys/AT0/velocity \
               /search/tracks \
-              /yolo/search/boxes"
+              /search/tracks/camera_coordinates_tria \
+              /search/tracks/camera_coordinates_fov \
+              /search/tracks/world_coordinates \
+              /search/tracks/world_coordinates/fov"
 
 ANAFI_PERCEPTION_RELEVANT_TOPICS="/anafi/image \
         /anafi/attitude \
@@ -147,6 +145,16 @@ EVAL_SEG_TOPICS="/SEGMASK_with_SP \
         /segmentation/dl_mask \
         /segmentation/offline_mask"
 
+BAREBONE_TOPICS="/anafi/image \
+        /anafi/gnss_location \
+        /anafi/height \
+        /anafi/pose \
+        /anafi/rpy \
+        /anafi/ned_pos_from_gnss \
+        /anafi/ned_frame_gnss_origin \
+        /anafi/optical_flow_velocities \
+        /anafi/polled_body_velocities"
+
 STANDARD_TOPICS="$ANAFI_OUTPUT_TOPICS \
         $ANAFI_CMD_TOPICS \
         $DARKNET_TOPICS \
@@ -163,7 +171,7 @@ elif [[ $ENV == "lab" ]]; then
     rosbag record -O $OUTPUT_DIR/$TIME \
         $ANAFI_PERCEPTION_RELEVANT_TOPICS \
         $QUAlISYS_TOPICS 
-elif [[ $ENV == "eval" ]]; then
+elif [[ $ENV == "eval_pix2geo" ]]; then
     echo "Rosbagging lab topics"
     rosbag record -O $OUTPUT_DIR/$TIME \
         $EVAL_PIX2GEO

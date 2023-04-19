@@ -6,8 +6,9 @@
         pkg="transform_publisher"
         type="transform_publisher.py"
         output="screen">
-
-        <param name="/use_sim_time" value="true"/>
     </node>
+
+    <rosparam command="load" file="$(find anafi_setup)/config/anafi_config.yaml"/>
+
 
 </launch>
