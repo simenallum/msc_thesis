@@ -29,7 +29,7 @@ if [ "$run_perception_master" = true ]; then
     tmux send-keys "roslaunch pix2geo pix2geo.launch --wait" Enter
 
     tmux select-pane -t 2
-    tmux send-keys "nvidia-smi -l" Enter
+    tmux send-keys "roslaunch transform_publisher transform_publisher.launch --wait" Enter
 
     tmux select-pane -t 3
     tmux send-keys "bash ~/catkin_ws/src/msc_thesis/init_camera.sh" Enter
@@ -59,9 +59,7 @@ if [ "$run_platform_tracker" = true ]; then
 
     tmux select-pane -t 3
     tmux send-keys "roslaunch apriltags_pose_estimator apriltags_pose_estimator.launch --wait" Enter
-
-    tmux select-pane -t 4
-    tmux send-keys "roslaunch transform_publisher transform_publisher.launch --wait" Enter
+    
 fi
 
 if [ "$run_segmentation" = true ]; then

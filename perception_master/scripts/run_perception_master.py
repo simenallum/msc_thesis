@@ -147,10 +147,11 @@ class Perception_master:
 		)
 
 	def _new_GNSS_measurement_callback(self, GNSS_meas):
+		self._gnss_drone_coordinates.append([GNSS_meas.latitude, GNSS_meas.longitude, GNSS_meas.altitude])
+		
+	def _new_gnss_origin_callback(self, origin_msg):
 		if None in (self._NED_frame_origin):
-			self._NED_frame_origin = [GNSS_meas.latitude, GNSS_meas.longitude, GNSS_meas.altitude]
-		else:
-			self._gnss_drone_coordinates.append([GNSS_meas.latitude, GNSS_meas.longitude, GNSS_meas.altitude])
+			self._NED_frame_origin = [origin_msg.vector.x, origin_msg.vector.x, origin_msg.vector.x]
 
 	def _new_safe_point_callback(self, safe_point_msg):
 

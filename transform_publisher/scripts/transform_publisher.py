@@ -13,6 +13,8 @@ import tf2_geometry_msgs.tf2_geometry_msgs
 
 from geometry_msgs.msg import PoseStamped, TransformStamped, PointStamped
 
+from anafi_uav_msgs.msg import Float32Stamped
+
 
 class transformPublisher():
 
@@ -29,6 +31,10 @@ class transformPublisher():
 			self._new_pose_callback
 		)
 
+		rospy.Subscriber("/anafi/height", Float32Stamped,
+			self._new_height_cb
+		)
+
 		self.gnss_bodyframe_publisher = rospy.Publisher(
 			"/anafi/gnss_ned_in_body_frame", PointStamped, queue_size=10
 		)
@@ -41,6 +47,23 @@ class transformPublisher():
 
 		self._init_static_broadcaster()
 
+	def _new_height_cb(self, msg):
+		t = TransformStamped()
+
+		t.header.stamp = msg.header.stamp
+		t.header.frame_id = "drone_alt" # Transformation from frame id TO child id
+		t.child_frame_id = "ground_alt"
+		t.transform.translation.x = 0.0
+		t.transform.translation.y = 0.0
+		t.transform.translation.z = msg.data
+
+		t.transform.rotation.x = 1
+		t.transform.rotation.y = 0
+		t.transform.rotation.z = 0
+		t.transform.rotation.w = 0
+
+		self.dynamic_broadcaster.sendTransform(t)
+
 	def _new_pose_callback(self, msg):
 		quaternions=[
 			msg.pose.orientation.x,
@@ -52,8 +75,8 @@ class transformPublisher():
 		rot = Rotation.from_quat(quaternions)
 		(roll, pitch, yaw) = rot.as_euler('xyz', degrees=True)
 
-		world_to_drone = Rotation.from_euler('xy', [-roll, -pitch], degrees=True) # Dont mind the yaw angle
-		camera_to_drone = world_to_drone.inv()
+		world_to_drone = Rotation.from_euler('xy', [roll, pitch], degrees=True) # Dont mind the yaw angle
+		camera_to_drone = world_to_drone
 
 		quaternions = camera_to_drone.as_quat()
 
@@ -73,14 +96,15 @@ class transformPublisher():
 
 		self.dynamic_broadcaster.sendTransform(t)
 
-		world_to_drone = Rotation.from_euler('xyz', [roll, pitch, yaw], degrees=True) # Down mind the yaw angle
-		quat = world_to_drone.inv().as_quat()
+		world_to_drone = Rotation.from_euler('z', -yaw, degrees=True)
+		quat = world_to_drone.as_quat()
+
 
 		t = TransformStamped()
 
 		t.header.stamp = msg.header.stamp
-		t.header.frame_id = "body" # Transformation from frame id TO child id
-		t.child_frame_id = "world"
+		t.header.frame_id = "camera_at_body_origin" # Transformation from frame id TO child id
+		t.child_frame_id = "world_no_trans"
 		t.transform.translation.x = 0.0
 		t.transform.translation.y = 0.0
 		t.transform.translation.z = 0.0
@@ -114,14 +138,30 @@ class transformPublisher():
 
 
 	def _new_point_callback(self, msg):
-		
+
+		t = TransformStamped()
+
+		t.header.stamp = msg.header.stamp
+		t.header.frame_id = "world_no_trans" # Transformation from frame id TO child id
+		t.child_frame_id = "world"
+		t.transform.translation.x = -msg.point.x # Minus her??? 
+		t.transform.translation.y = -msg.point.y
+		t.transform.translation.z = -msg.point.z
+
+		t.transform.rotation.x = 0
+		t.transform.rotation.y = 0
+		t.transform.rotation.z = 0
+		t.transform.rotation.w = 1
+
+		self.dynamic_broadcaster.sendTransform(t)
+
 		point = PointStamped()
-		point.header.frame_id = msg.header.frame_id
+		point.header.frame_id = "world"
 		point.header.stamp = msg.header.stamp
 
-		point.point.x = -msg.point.x
-		point.point.y = -msg.point.y
-		point.point.z = -msg.point.z
+		point.point.x = 0
+		point.point.y = 0
+		point.point.z = 0
 
 		try:
 			body_point = self.tfBuffer.transform(point, "body", rospy.Duration(0.1))
@@ -134,9 +174,26 @@ class transformPublisher():
 	def start(self):
 
 		rospy.loginfo("Starting transform publisher")
+		rate = rospy.Rate(1) # 0.2 Hz, equivalent to 5 seconds
+		rate.sleep()
 
 		while not rospy.is_shutdown():
-			rospy.spin()
+			point = PointStamped()
+			point.header.frame_id = "camera"
+			point.header.stamp = rospy.Time.now() - rospy.Duration(0.1)
+
+			point.point.x = 0
+			point.point.y = 0
+			point.point.z = 1
+
+
+			body_point = self.tfBuffer.transform(point, "world", rospy.Duration(1))
+
+
+			print(body_point)
+
+
+			rate.sleep()
 			
 
 

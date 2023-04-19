@@ -12,6 +12,7 @@ from scipy.spatial.transform import Rotation
 from yolov8_ros.msg import BoundingBox, BoundingBoxes
 from pix2geo.msg import TrackWorldCoordinate
 from anafi_uav_msgs.msg import Float32Stamped
+import pix2geo_utils.transform_utils as transform_utils
 class Pix2Geo:
 
 	def __init__(self, config_file=None, deepsort_params=None):
@@ -49,6 +50,8 @@ class Pix2Geo:
 		self._camera_focal_length = (self.camera_matrix[0,0] + self.camera_matrix[1,1])/2
 		self._image_center = (self.camera_matrix[0,2], self.camera_matrix[1,2])
 		self._camera_fov = (self._camera_hfov, pix2geo_utils.utils.calculate_vfov(self._camera_hfov, self._aspect_ratio))
+
+		self._transformer = transform_utils.Transformer()
 
 	def _setup_subscribers(self):
 		rospy.Subscriber(
@@ -121,17 +124,19 @@ class Pix2Geo:
 			
 			center = pix2geo_utils.utils.get_bounding_box_center(track[0])
 
+			height = self._transformer.get_height_from_timestamp(bounding_boxes.header.stamp)
+
 			detection_camera_frame_fov = pix2geo_utils.utils.calculate_detection_location(
 				camera_fov=self._camera_fov,
 				detection_pixels=center,
-				drone_position=self._last_height_meas,
+				drone_position=[height],
 				img_height=self._img_height,
 				img_width=self._img_width
 			)
 
 			detection_camera_frame_tria = pix2geo_utils.utils._pixel_to_camera_coordinates(
 				center_px=center,
-				drone_pos=self._last_height_meas,
+				drone_pos=[height],
 				camera_focal_length=self._camera_focal_length,
 				image_center=self._image_center
 			)
@@ -139,14 +144,8 @@ class Pix2Geo:
 			if self._flag_publish_camera_frame_detections:
 				self._publish_track_camera_coordinate(detection_camera_frame_fov, detection_camera_frame_tria, track_id, track_probability, track_class)
 
-			
-			detection_world_frame = pix2geo_utils.utils.transform_point_cam_to_world(
-				detection_camera_frame_tria,
-				translation=self._last_gnss_meas,
-				yaw_deg=np.rad2deg(self._last_compass_meas)
-			)
+			detection_world_frame = self._transformer.camera_to_world_frame(detection_camera_frame_tria, timestamp=bounding_boxes.header.stamp)
 		
-
 			self._publish_track_world_coordinate(detection_world_frame, track_id, track_probability, track_class)
 
 	def _new_safe_points_callback(self, point_msg):
@@ -160,19 +159,16 @@ class Pix2Geo:
 			
 		center = (cam_x, cam_y)
 
+		height = self._transformer.get_height_from_timestamp(point_msg.header.stamp)
+
 		safe_point_camera_frame_tria = pix2geo_utils.utils._pixel_to_camera_coordinates(
 			center_px=center,
-			drone_pos=self._last_height_meas,
+			drone_pos=[height],
 			camera_focal_length=self._camera_focal_length,
 			image_center=self._image_center
 		)
 
-		safe_point_world_frame = pix2geo_utils.utils.transform_point_cam_to_world(
-			safe_point_camera_frame_tria,
-			translation=self._last_gnss_meas,
-			yaw_deg=np.rad2deg(self._last_compass_meas)
-		)
-		
+		safe_point_world_frame = self._transformer.camera_to_world_frame(safe_point_camera_frame_tria, timestamp=point_msg.header.stamp)
 
 		self._publish_safe_point_world_coordinate(safe_point_world_frame)
 

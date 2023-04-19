@@ -174,6 +174,8 @@ class Segmentation_master:
 			map_mask_msg = response.image_data
 			map_mask_image = self.bridge.imgmsg_to_cv2(map_mask_msg, "mono8")
 
+		timestamp_at_mask_received = rospy.Time.now()
+
 		if self._last_height_meas[0] < self._min_altitude_to_use_dl_segmentation:
 			mask = map_mask_image
 
@@ -220,7 +222,7 @@ class Segmentation_master:
 		rospy.loginfo("Time taken to find SP: {:.2f} seconds".format(time.time() - start_time))
 
 		if not (np.any(safe_points) == None):
-			self._publish_safe_point(safe_points)
+			self._publish_safe_point(safe_points, timestamp=timestamp_at_mask_received)
 
 		if self._debug:
 			# Convert the mask to an RGB color image
@@ -237,17 +239,17 @@ class Segmentation_master:
 			self.mask_pub.publish(self.bridge.cv2_to_imgmsg(mask_rgb, "rgb8"))
 
 
-	def _prepare_out_message(self, point):
+	def _prepare_out_message(self, point, timestamp):
 		msg = PointStamped()
-		msg.header.stamp = rospy.Time.now()
+		msg.header.stamp = timestamp
 
 		msg.point.x = point[0]
 		msg.point.y = point[1]
 
 		return msg
 
-	def _publish_safe_point(self, point):
-		msg = self._prepare_out_message(point)
+	def _publish_safe_point(self, point, timestamp):
+		msg = self._prepare_out_message(point, timestamp)
 		self.safe_point_pub.publish(msg)
 
 

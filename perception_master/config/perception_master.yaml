@@ -4,6 +4,7 @@ topics:
     tracks_world_coord: "/search/tracks/world_coordinates"
     platform_EKF: "/estimate/ekf"
     GNSS: "/anafi/gnss_location"
+    ned_frame_origin: "/anafi/ned_frame_gnss_origin"
 
   output:
     detected_person: "/perception/detected_person"
