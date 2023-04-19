@@ -26,9 +26,12 @@ class Transformer():
 			point.point.y = 0
 			point.point.z = 0
 
-			altitude_point = self.tfBuffer.transform(point, "drone_alt", rospy.Duration(1)) # Wait durations set large, however the tf is available at 30Hz
-
-			return altitude_point.point.z
+			try:
+				altitude_point = self.tfBuffer.transform(point, "drone_alt", rospy.Duration(0.05)) # TF should be available at 30Hz. 
+				return altitude_point.point.z
+			except Exception as e:
+				return None
+			
 
 		def camera_to_world_frame(self, point_list, timestamp):
 			point = PointStamped()
@@ -39,9 +42,14 @@ class Transformer():
 			point.point.y = point_list[1]
 			point.point.z = point_list[2]
 
-			world_point = self.tfBuffer.transform(point, "world", rospy.Duration(1)) # Wait durations set large, however the tf is available at 30Hz
 
-			return [world_point.point.x, world_point.point.y, world_point.point.z]
+
+			try:
+				world_point = self.tfBuffer.transform(point, "world", rospy.Duration(0.05)) # TF should be available at 30Hz. 
+				return [world_point.point.x, world_point.point.y, world_point.point.z]
+			except:
+				return [None]
+
 
 
 def main():

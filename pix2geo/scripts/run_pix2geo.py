@@ -66,24 +66,6 @@ class Pix2Geo:
 			self._new_safe_points_callback
 		)
 
-		rospy.Subscriber(
-			self.config["topics"]["input"]["pose"], 
-			PoseStamped, 
-			self._new_compass_meas_callback
-		)
-
-		rospy.Subscriber(
-			self.config["topics"]["input"]["NED_gnss"], 
-			PointStamped, 
-			self._new_NED_gnss_meas_callback
-		)
-
-		rospy.Subscriber(
-			"/anafi/height",
-			Float32Stamped,
-			self._new_height_CB
-		)
-
 	def _setup_publishers(self):
 		self._track_world_coord_pub = rospy.Publisher(
 			self.config["topics"]["output"]["track_world_coordinate"], 
@@ -117,8 +99,12 @@ class Pix2Geo:
 			)
 
 	def _new_tracks_callback(self, bounding_boxes):
-		if None in (self._last_height_meas + self._last_gnss_meas + self._last_compass_meas):
-			rospy.logwarn(f"Can not transform safe point. Missing either compass or gnss-measurements")
+		timestamp = bounding_boxes.header.stamp
+
+		height = self._transformer.get_height_from_timestamp(timestamp)
+			
+		if height is None:
+			rospy.logdebug(f"Can not transform track points. Missing reasonable height measurement for timestamp: {timestamp}")
 			return
 		
 		tracks = self._extract_bbs(bounding_boxes.bounding_boxes)
@@ -129,8 +115,6 @@ class Pix2Geo:
 			track_probability = track[1]
 			
 			center = pix2geo_utils.utils.get_bounding_box_center(track[0])
-
-			height = self._transformer.get_height_from_timestamp(bounding_boxes.header.stamp)
 
 			detection_camera_frame_fov = pix2geo_utils.utils.calculate_detection_location(
 				camera_fov=self._camera_fov,
@@ -148,29 +132,34 @@ class Pix2Geo:
 			)
 			
 
-			detection_world_frame = self._transformer.camera_to_world_frame(detection_camera_frame_tria, timestamp=bounding_boxes.header.stamp)
+			detection_world_frame = self._transformer.camera_to_world_frame(detection_camera_frame_tria, timestamp)
+
+			if None in detection_world_frame:
+				rospy.logdebug(f"Can not transform track points. Missing reasonable transformation for timestamp: {timestamp}")
+				return
 		
 			self._publish_track_world_coordinate(detection_world_frame, track_id, track_probability, track_class)
 
 			if self._debug:
 				self._publish_track_camera_coordinate(detection_camera_frame_fov, detection_camera_frame_tria, track_id, track_probability, track_class)
 
-				detection_world_frame_fov = self._transformer.camera_to_world_frame(detection_camera_frame_fov, timestamp=bounding_boxes.header.stamp)
+				detection_world_frame_fov = self._transformer.camera_to_world_frame(detection_camera_frame_fov, timestamp)
 				msg = self._prepare_out_message(detection_world_frame_fov, track_id, track_probability, track_class)
 				self._track_world_coord_pub_fov.publish(msg)
 
 	def _new_safe_points_callback(self, point_msg):
-		if None in (self._last_height_meas + self._last_gnss_meas + self._last_compass_meas):
-			rospy.logwarn(f"Can not transform safe point. Missing either compass or gnss-measurements")
-			return
-		
-		
+		timestamp = point_msg.header.stamp
+
 		cam_x = point_msg.point.x
 		cam_y = point_msg.point.y
 			
 		center = (cam_x, cam_y)
 
-		height = self._transformer.get_height_from_timestamp(point_msg.header.stamp)
+		height = self._transformer.get_height_from_timestamp(timestamp)
+
+		if height is None:
+			rospy.logdebug(f"Can not transform safe point. Missing reasonable height measurement for timestamp: {timestamp}")
+			return
 
 		safe_point_camera_frame_tria = pix2geo_utils.utils._pixel_to_camera_coordinates(
 			center_px=center,
@@ -179,7 +168,11 @@ class Pix2Geo:
 			image_center=self._image_center
 		)
 
-		safe_point_world_frame = self._transformer.camera_to_world_frame(safe_point_camera_frame_tria, timestamp=point_msg.header.stamp)
+		safe_point_world_frame = self._transformer.camera_to_world_frame(safe_point_camera_frame_tria, timestamp)
+
+		if None in safe_point_world_frame:
+			rospy.logdebug(f"Can not transform safe point. Missing reasonable transformation for timestamp: {timestamp}")
+			return
 
 		self._publish_safe_point_world_coordinate(safe_point_world_frame)
 
@@ -196,24 +189,6 @@ class Pix2Geo:
 	def _publish_safe_point_world_coordinate(self, point):
 		msg = self._prepare_safe_point_message(point)
 		self._safe_point_world_coord_pub.publish(msg)
-
-	def _new_compass_meas_callback(self, measurement):
-		quaternions=[
-			measurement.pose.orientation.x,
-			measurement.pose.orientation.y,
-			measurement.pose.orientation.z,
-			measurement.pose.orientation.w
-		]
-		
-		rot = Rotation.from_quat(quaternions)
-		(roll, pitch, yaw) = rot.as_euler('xyz', degrees=False)
-		self._last_compass_meas = yaw
-
-	def _new_NED_gnss_meas_callback(self, measurment):
-		self._last_gnss_meas = [measurment.point.x, measurment.point.y, measurment.point.z]
-
-	def _new_height_CB(self, meas):
-		self._last_height_meas = [meas.data]
 
 	def _extract_bbs(self, bboxes):
 		result = []
