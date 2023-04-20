@@ -3,7 +3,8 @@
 <launch>
     <rosparam command="load" file="$(find anafi_setup)/config/anafi_config.yaml"/>
 
-    <node name="gnss_throttler" type="throttle" pkg="topic_tools" args="messages /anafi/gnss_ned_in_body_frame 1 /anafi/gnss_ned_in_body_frame/1hz" />
+    <node name="gnss_throttler" type="throttle" pkg="topic_tools" args="messages /anafi/gnss_ned_in_body_frame 2 /anafi/gnss_ned_in_body_frame/downsampled" />
+    <node name="image_throttler" type="throttle" pkg="topic_tools" args="messages /anafi/image 10 /anafi/image/downsampled" />
 
     <node
         name="perception_ekf"

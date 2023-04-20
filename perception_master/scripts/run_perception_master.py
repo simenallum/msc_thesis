@@ -42,6 +42,7 @@ class Perception_master:
 
 	def _initalize_parameters(self):
 		self.all_proxies_loaded = False
+		self._tracking_platform = False
 
 		# Platform detection utils
 		self._min_dist_to_initiate_platform_tracking = self.config["settings"]["min_dist_to_initiate_platform_tracking"]
@@ -244,30 +245,40 @@ class Perception_master:
 		length = utils.calculate_euclidian_distance_of_vector(vector)
 
 		if length > self._min_dist_to_initiate_platform_tracking:
-			# create a request object
-			request = SetBoolRequest()
-			request.data = True
+			if self._tracking_platform:
+				rospy.loginfo("Stopped tracking using perception based estimators. Activated GNSS.")
 
-			response = self._activate_GNSS_node_proxy(request)
+				# create a request object
+				request = SetBoolRequest()
+				request.data = True
 
-			request = SetBoolRequest()
-			request.data = False
+				response = self._activate_GNSS_node_proxy(request)
 
-			response = self._activate_AT_node_proxy(request)
-			response = self._activate_DNN_node_proxy(request)
+				request = SetBoolRequest()
+				request.data = False
+
+				response = self._activate_AT_node_proxy(request)
+				response = self._activate_DNN_node_proxy(request)
+				
+				self._tracking_platform = False
 
 		else:
-			# create a request object
-			request = SetBoolRequest()
-			request.data = True
+			if not self._tracking_platform:
+				rospy.loginfo("Initiated tracking using perception based estimators. Deactivated GNSS.")
+				
+				# create a request object
+				request = SetBoolRequest()
+				request.data = True
 
-			response = self._activate_AT_node_proxy(request)
-			response = self._activate_DNN_node_proxy(request)
+				response = self._activate_AT_node_proxy(request)
+				response = self._activate_DNN_node_proxy(request)
 
-			request = SetBoolRequest()
-			request.data = False
+				request = SetBoolRequest()
+				request.data = False
 
-			response = self._activate_GNSS_node_proxy(request)
+				response = self._activate_GNSS_node_proxy(request)
+
+				self._tracking_platform = True
 
 			
 

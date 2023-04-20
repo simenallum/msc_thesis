@@ -60,7 +60,7 @@ class aprilTagsPoseEstimator():
 				self.processing_image = False
 				self.detector_initialized = False
 
-				rospy.Subscriber("/anafi/image", sensor_msgs.msg.Image,
+				rospy.Subscriber("/anafi/image/downsampled", sensor_msgs.msg.Image,
 						self._new_image_cb
 				)
 

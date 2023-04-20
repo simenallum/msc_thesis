@@ -38,5 +38,5 @@ measurements:
     topic_name: /anafi/height
     sigmas: [0.1] # std. dev. in z
   gnss_measurement:
-    topic_name: /anafi/gnss_ned_in_body_frame/1hz
+    topic_name: /anafi/gnss_ned_in_body_frame/downsampled
     sigmas: [2, 2, 4] # std. dev in x,y,z

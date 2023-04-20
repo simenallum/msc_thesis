@@ -136,7 +136,7 @@ class transformPublisher():
 		point.point.z = 0
 
 		try:
-			body_point = self.tfBuffer.transform(point, "body", rospy.Duration(0.1))
+			body_point = self.tfBuffer.transform(point, "body", rospy.Duration(0.05))
 		except Exception as e:
 			return
 
