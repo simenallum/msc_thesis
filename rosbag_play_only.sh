@@ -16,7 +16,10 @@ EVAL_SEG_TOPICS="/anafi/image \
         /anafi/height \
         /anafi/pose \
         /anafi/rpy \
-        /anafi/ned_pos_from_gnss"
+        /anafi/ned_pos_from_gnss \
+        /anafi/ned_frame_gnss_origin \
+        /anafi/optical_flow_velocities \
+        /anafi/polled_body_velocities"
 
 EVAL_PIX2GEO_TOPICS="/anafi/image \
         /anafi/gnss_location \

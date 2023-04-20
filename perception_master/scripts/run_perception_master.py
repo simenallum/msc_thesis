@@ -10,7 +10,7 @@ from folium.plugins import MarkerCluster
 import pandas as pd
 
 from sensor_msgs.msg import NavSatFix
-from geometry_msgs.msg import PointStamped, PoseWithCovarianceStamped
+from geometry_msgs.msg import PointStamped, PoseWithCovarianceStamped, Vector3Stamped
 from pix2geo.msg import TrackWorldCoordinate
 from perception_master.msg import DetectedPerson
 from std_srvs.srv import SetBool, SetBoolRequest
@@ -98,6 +98,12 @@ class Perception_master:
 			self._new_GNSS_measurement_callback
 		)
 
+		rospy.Subscriber(
+			self.config["topics"]["input"]["ned_frame_origin"], 
+			Vector3Stamped, 
+			self._new_gnss_origin_callback
+		)
+
 	def _initalize_services(self):
 		self._AT_node_activation_name = self.config["services"]["AT_node_activation_name"]
 		self._DNN_node_activation_name = self.config["services"]["DNN_node_activation_name"]
@@ -152,7 +158,7 @@ class Perception_master:
 		
 	def _new_gnss_origin_callback(self, origin_msg):
 		if None in (self._NED_frame_origin):
-			self._NED_frame_origin = [origin_msg.vector.x, origin_msg.vector.x, origin_msg.vector.x]
+			self._NED_frame_origin = [origin_msg.vector.x, origin_msg.vector.y, origin_msg.vector.z]
 
 	def _new_safe_point_callback(self, safe_point_msg):
 
