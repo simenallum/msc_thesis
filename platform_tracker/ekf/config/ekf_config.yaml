@@ -1,0 +1,42 @@
+ekf:
+  output:
+    topic_name: /estimate/ekf
+  input:
+    topic_name: /drone/out/ekf_input
+  dynamic_model: constant_velocity_no_attitude
+  measurement_models: [drone_velocity, dnn_cv_position, apriltags_position, dnn_cv_position_xy, altitude_measurement, gnss_measurement]
+  dt: 0.04
+
+services:
+  GNSS_node_activation_name: activate_GNSS_tracking
+
+dynamic_models:
+  constant_velocity_no_attitude:
+    input:
+      type: none
+    output_states: position
+    init_values:
+      x0: [0, 0, 0, 0, 0, 0]
+      P0: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    sigmas: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1] # Q matrix
+    output_type: geomtry_msgs.PoseWithCovarianceStamped
+
+measurements:
+  dnn_cv_position:
+    topic_name: /estimate/dnn_cv/position
+    sigmas: [0.3, 0.3, 0.7] # std. dev. in x,y,z (m)
+  dnn_cv_position_xy:
+    topic_name: /estimate/dnn_cv/position
+    sigmas: [0.3, 0.3] # std. dev. in x,y (m)
+  drone_velocity:
+    topic_name: /anafi/polled_body_velocities
+    sigmas: [0.01, 0.01, 0.01] # std. dev. in v_x, v_y, v_z (m/s)
+  apriltags_position:
+    topic_name: /estimate/aprilTags/pose
+    sigmas: [0.2, 0.2, 0.2] # std. dev. in x,y,z
+  altitude_measurement:
+    topic_name: /anafi/height
+    sigmas: [0.1] # std. dev. in z
+  gnss_measurement:
+    topic_name: /anafi/gnss_ned_in_body_frame/downsampled
+    sigmas: [2, 2, 4] # std. dev in x,y,z

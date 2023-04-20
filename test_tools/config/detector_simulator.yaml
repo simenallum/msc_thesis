@@ -8,8 +8,8 @@ topics:
 publish_detected_image: True
 
 settings:
-  class_names: ["human", "floating-objects", "safe_landing", "dummy", "dummy", "dummy"]
-  AT_ids: [0, 1, 2, 3, 4, 5]
+  class_names: ["human", "floating-objects"]
+  AT_ids: [0, 11]
   detection_confidence: 0.81
 
 

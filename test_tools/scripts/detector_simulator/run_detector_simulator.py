@@ -50,7 +50,7 @@ class DetectorSimulator:
 		self.detection_confidence = self.config["settings"]["detection_confidence"]
 
 	def _initalize_detector(self):
-		self.detector = apriltags_detector.aprilTagDetector()
+		self.detector = apriltags_detector.aprilTagDetector(min_id=0)
 
 	
 	def _setup_subscribers(self):
@@ -91,7 +91,7 @@ class DetectorSimulator:
 
 				self._publish_detected_image(detection_image)
 
-			msg = self._prepare_boundingbox_msg(bbs, confidence, ids, class_names, image)
+			msg = self._prepare_boundingbox_msg(bbs, confidence, ids, class_names, image, timestamp=rospy.Time.now())
 			self._publish_detected_boundingboxes(msg)
 
 
@@ -99,9 +99,9 @@ class DetectorSimulator:
 		msg = self.bridge.cv2_to_imgmsg(image, "bgr8")
 		self.detection_image_pub.publish(msg)
 
-	def _prepare_boundingbox_msg(self, boxes, confidence, classes, class_names, image):
+	def _prepare_boundingbox_msg(self, boxes, confidence, classes, class_names, image, timestamp):
 		boundingBoxes = BoundingBoxes()
-		boundingBoxes.header.stamp = rospy.Time.now()
+		boundingBoxes.header.stamp = timestamp
 
 		for i in range(len(boxes)):
 			boundingBox = BoundingBox()

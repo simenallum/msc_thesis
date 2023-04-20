@@ -1,0 +1,15 @@
+# Goal: Position to reach
+int32 x_helipad_ned   # [m]
+int32 y_helipad_ned   # [m]
+int32 z_helipad_ned   # [m]
+---
+# Result: Final position
+int32 final_x_ned     # [m]
+int32 final_y_ned     # [m]
+int32 final_z_ned     # [m]
+bool is_landed
+---
+# Feedback: Current position
+int32 x_ned           # [m]
+int32 y_ned           # [m]
+int32 z_ned           # [m]

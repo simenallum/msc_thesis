@@ -129,6 +129,10 @@ def extract_metric_map(mask: np.array, map_resolution: tuple, map_radius: float,
     n_x = int(ground_coverage[0] / pixels_per_meter_x)
     n_y = int(ground_coverage[1] / pixels_per_meter_y)
 
+    # Divide by two to get numbr of px in each direction from center
+    n_x = n_x // 2
+    n_y = n_y // 2
+
     # Calculate the x and y coordinates of the center of the image
     center_x = width // 2
     center_y = height // 2
@@ -163,6 +167,23 @@ def mask_to_image(mask: np.ndarray, mask_values):
 
     return out
 
+def apply_mask_overlay(image, mask, alpha=0.3):
+    # Resize the mask to the same size as the image
+    mask = cv2.resize(mask, (image.shape[1], image.shape[0]))
+
+    # Create an empty array for the orange color
+    color = np.zeros_like(image, dtype=np.uint8)
+    color[:] = (0, 0, 255)
+
+    # Create a mask with the orange color where the input mask has a value of 255
+    mask_rgb = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
+    mask_rgb = mask_rgb.astype(np.float32) / 255.0
+    orange_mask = np.multiply(mask_rgb, color.astype(np.float32))
+
+    # Apply the orange mask as a transparent overlay
+    blended = cv2.addWeighted(image.astype(np.float32), 1 - alpha, orange_mask, alpha, 0)
+
+    return blended.astype(np.uint8)
 
 if __name__ == '__main__':
 

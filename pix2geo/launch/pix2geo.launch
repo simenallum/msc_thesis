@@ -2,7 +2,7 @@
 
 <launch>
 
-    <rosparam command="load" file="$(find pix2geo)/config/drone_config.yaml"/>
+    <rosparam command="load" file="$(find anafi_setup)/config/anafi_config.yaml"/>
 
     <node
         name="pix2geo"

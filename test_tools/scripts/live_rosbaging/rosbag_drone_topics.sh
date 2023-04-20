@@ -27,47 +27,34 @@ fi
 TIME=$(date +%Y-%m-%d-%H-%M-%S)
 
 EVAL_PIX2GEO="/anafi/image \
-              /anafi/attitude \
               /anafi/gnss_location \
               /anafi/height \
               /anafi/optical_flow_velocities \
               /anafi/polled_body_velocities \
               /anafi/pose \
-              /anafi/odometry \
               /anafi/rpy \
               /tf \
+              /tf_static \
               /anafi/ned_pos_from_gnss \
-              /qualisys/Anafi/odom \
               /qualisys/Anafi/pose \
-              /qualisys/Anafi/velocity \
-              /qualisys/AT0/odom \
               /qualisys/AT0/pose \
-              /qualisys/AT0/velocity \
               /search/tracks \
-              /yolo/search/boxes"
+              /search/tracks/camera_coordinates_tria \
+              /search/tracks/camera_coordinates_fov \
+              /search/tracks/world_coordinates \
+              /search/tracks/world_coordinates/fov"
 
-ANAFI_PERCEPTION_RELEVANT_TOPICS="/anafi/image \
-        /anafi/attitude \
+ANAFI_PT_TOPICS="/anafi/image \
         /anafi/gnss_location \
-        /darknet_ros/bounding_boxes \
         /anafi/height \
-        /anafi/optical_flow_velocities \
         /anafi/pose \
-        /anafi/odometry \
-        /anafi/rpy \
         /anafi/polled_body_velocities \
-        /anafi/rpy \
-        /tf \
-        /tf_static \
         /estimate/aprilTags/pose \
-        /estimate/aprilTags/pose/camera_frame \
         /estimate/dnn_cv/position \
         /estimate/ekf \
         /estimate/aprilTags/num_tags_detected \
-        /anafi/ned_pose_from_gnss \
-        /anafi/gnss_ned_in_body_frame \
-        /anafi/gnss_ned_in_body_frame/1hz \
-        /estimate/ekf/velocity"
+        /anafi/ned_pos_from_gnss \
+        /anafi/gnss_ned_in_body_frame/downsampled"
 
 OUTSIDE="/anafi/image \
         /anafi/attitude \
@@ -89,7 +76,7 @@ OUTSIDE="/anafi/image \
         /estimate/aprilTags/num_tags_detected \
         /anafi/ned_pose_from_gnss \
         /anafi/gnss_ned_in_body_frame \
-        /anafi/gnss_ned_in_body_frame/1hz \
+        /anafi/gnss_ned_in_body_frame/downsampled \
         /estimate/ekf/velocity \
         /anafi/link_goodput \
         /anafi/link_quality \
@@ -137,6 +124,32 @@ QUAlISYS_TOPICS="/qualisys/Anafi/odom \
 GNC_TOPICS="/guidance/pure_pursuit/velocity_reference \
         /guidance/pid/velocity_reference"
 
+EVAL_SEG_TOPICS="/SEGMASK_with_SP \
+        /SEGMASK_dice_score \
+        /SEGMASK_percentage_DL_mask_used \
+        /anafi/image \
+        /anafi/gnss_location \
+        /anafi/height \
+        /anafi/pose \
+        /anafi/rpy \
+        /tf \
+        /tf_static \
+        /anafi/ned_pos_from_gnss \
+        /segmentation/safe_points/camera_frame \
+        /segmentation/safe_points/world_frame \
+        /segmentation/dl_mask \
+        /segmentation/offline_mask"
+
+BAREBONE_TOPICS="/anafi/image \
+        /anafi/gnss_location \
+        /anafi/height \
+        /anafi/pose \
+        /anafi/rpy \
+        /anafi/ned_pos_from_gnss \
+        /anafi/ned_frame_gnss_origin \
+        /anafi/optical_flow_velocities \
+        /anafi/polled_body_velocities"
+
 STANDARD_TOPICS="$ANAFI_OUTPUT_TOPICS \
         $ANAFI_CMD_TOPICS \
         $DARKNET_TOPICS \
@@ -151,9 +164,9 @@ if [[ $ENV == "sim" ]]; then
 elif [[ $ENV == "lab" ]]; then
     echo "Rosbagging lab topics"
     rosbag record -O $OUTPUT_DIR/$TIME \
-        $ANAFI_PERCEPTION_RELEVANT_TOPICS \
+        $ANAFI_PT_TOPICS \
         $QUAlISYS_TOPICS 
-elif [[ $ENV == "eval" ]]; then
+elif [[ $ENV == "eval_pix2geo" ]]; then
     echo "Rosbagging lab topics"
     rosbag record -O $OUTPUT_DIR/$TIME \
         $EVAL_PIX2GEO
@@ -164,4 +177,16 @@ elif [[ $ENV == "real" ]]; then
 elif [[ $ENV == "all" ]]; then
     echo "Rosbagging all topics"
     rosbag record -a -O $OUTPUT_DIR/$TIME
+elif [[ $ENV == "eval_pt" ]]; then
+    echo "Rosbagging all topics"
+    rosbag record -O $OUTPUT_DIR/$TIME \
+        $ANAFI_PT_TOPICS
+elif [[ $ENV == "seg_eval" ]]; then
+    echo "Rosbagging segmenation eval topics"
+    rosbag record -O $OUTPUT_DIR/$TIME \
+        $EVAL_SEG_TOPICS
+elif [[ $ENV == "raw_data" ]]; then
+    echo "Rosbagging ONLY RAW TOPICS"
+    rosbag record -O $OUTPUT_DIR/$TIME \
+        $BAREBONE_TOPICS
 fi

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 class aprilTagDetector():
 
-		def __init__(self):
+		def __init__(self, min_id):
 
 
 				self.options = apriltag.DetectorOptions(
@@ -23,6 +23,8 @@ class aprilTagDetector():
 												debug=False,
 												quad_contours=True)
 				self.detector = apriltag.Detector(self.options)
+
+				self.min_id = min_id
 
 
 		def preprocess_image(self, img):
@@ -43,10 +45,11 @@ class aprilTagDetector():
 				ids = []
 				for i in range(n):
 						tag_id = detections[i].tag_id
-						xmin, ymin, xmax, ymax = self.corners_to_bbox(detections[i].corners)
+						if tag_id >= self.min_id:
+							xmin, ymin, xmax, ymax = self.corners_to_bbox(detections[i].corners)
 
-						bbs.append(np.array([xmin, ymin, xmax, ymax]))
-						ids.append(tag_id)
+							bbs.append(np.array([xmin, ymin, xmax, ymax]))
+							ids.append(tag_id)
 						
 													
 				return bbs, ids

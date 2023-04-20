@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+
+    <arg name="run_apriltags_pose_estimator" default="true" />
+
+    <rosparam command="load" file="$(find anafi_setup)/config/anafi_config.yaml"/>
+    
+    <group if="$(arg run_apriltags_pose_estimator)">
+        
+        <arg name="calculate_run_times" default="false" />
+        <arg name="view_camera_output" default="false" />
+        <arg name="calculate_fullpipe_runtimes" default="false" />
+        
+        
+        <node
+            name="apriltags_pose_estimator"
+            pkg="apriltags_pose_estimator"
+            type="apriltags_pose_estimator.py"
+            output="screen">
+            
+            <param name="environment" value="real" />
+            <param name="config_file" value="config/apriltags_config.yaml" />
+            <param name="calculate_run_times" value="$(arg calculate_run_times)"/>
+            <param name="view_camera_output" value="$(arg view_camera_output)"/>
+            <param name="calculate_fullpipe_runtimes" value="$(arg calculate_fullpipe_runtimes)"/>
+        </node>
+    </group>
+    
+</launch>

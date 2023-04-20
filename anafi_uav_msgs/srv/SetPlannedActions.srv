@@ -1,0 +1,7 @@
+# Planned actions
+string[]  action_list
+int32     num_actions
+bool      cancel_current_action
+---
+bool      success  # Whether service update succesful 
+

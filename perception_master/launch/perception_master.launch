@@ -14,6 +14,9 @@
 
     <rosparam command="load" file="$(find anafi_setup)/config/anafi_config.yaml"/>
 
+    <node name="ekf_throttler" type="throttle" pkg="topic_tools" args="messages /estimate/ekf 1 /estimate/ekf/downsampled" />
+
+
 </launch>
 
 

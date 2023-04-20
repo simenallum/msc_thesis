@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+
+    <arg name="run_image_saver" default="true" />
+
+    <!-- This has to be set accordingly -->
+    <param name="subfolder_name" type="string" value="platform_dataset_raw/outside_platform_images" />
+
+    <group if="$(arg run_image_saver)">
+        
+        <node
+            name="save_images"
+            pkg="utilities"
+            type="save_images.py"
+            output="screen">
+
+            <!--- This has to be set accordingly -->
+            <remap from="/image_topic" to="/anafi/image"/>
+
+
+        </node>
+    </group>
+    
+</launch>

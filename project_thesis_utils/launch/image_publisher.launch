@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+
+    <node
+        name="image_publisher"
+        pkg="utilities"
+        type="image_publisher.py"
+        output="screen">
+
+    </node>
+
+</launch>

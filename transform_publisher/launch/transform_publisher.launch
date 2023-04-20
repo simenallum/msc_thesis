@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+    <node
+        name="transform_publisher"
+        pkg="transform_publisher"
+        type="transform_publisher.py"
+        output="screen">
+    </node>
+
+    <rosparam command="load" file="$(find anafi_setup)/config/anafi_config.yaml"/>
+
+
+</launch>
