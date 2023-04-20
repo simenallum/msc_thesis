@@ -65,6 +65,9 @@ class PoseRecovery():
 
 
 		def find_R_t_homography(self, features_metric, features_image):
+			'''
+			Legacy function from Martins code base.
+			'''
 			XY01 = features_metric.copy()
 			uv01 = features_image.copy()
 

@@ -59,11 +59,6 @@ class DnnPoseEstimator():
             geometry_msgs.msg.PointStamped, queue_size=1
         )
 
-        self.heading_estimate_publisher = rospy.Publisher(
-            self.config["topics"]["output"]["heading"],
-            Heading, queue_size=1
-        )
-
     def start(self):
         rospy.loginfo("Starting Deep Neural Network Pose Estimator")
 

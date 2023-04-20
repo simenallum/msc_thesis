@@ -5,9 +5,6 @@
     <arg name="run_apriltags_pose_estimator" default="true" />
 
     <rosparam command="load" file="$(find anafi_setup)/config/anafi_config.yaml"/>
-
-    <!-- <node name="image_throttler" type="throttle" pkg="topic_tools" args="messages /anafi/image 15 /anafi/image_t" /> -->
-
     
     <group if="$(arg run_apriltags_pose_estimator)">
         

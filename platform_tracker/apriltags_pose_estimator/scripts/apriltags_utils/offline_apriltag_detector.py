@@ -1,6 +1,10 @@
 import cv2
 from apriltags_detector import aprilTagDetector
 
+'''
+This file initially used to display AT IDs and corner IDs. 
+'''
+
 def main():
 		capture = cv2.VideoCapture(0)
 
