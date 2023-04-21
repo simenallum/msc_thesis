@@ -34,6 +34,11 @@ def normalize_df_time(df):
 
     return df
 
+def merge_dfs(dataframes: list):
+    df_merged = reduce(lambda left,right: pd.merge_asof(left, right, on="Time", allow_exact_matches=True, direction="nearest", tolerance=0.01), dataframes)
+
+    return df_merged
+
 def sync_dfs_based_on_time(dataframes: list):
     import math
     earliest_time = math.inf
