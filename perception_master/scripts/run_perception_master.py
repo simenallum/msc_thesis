@@ -56,6 +56,9 @@ class Perception_master:
 			self._camera_hfov
 		)
 
+		# Toggle EKF measurements
+		self._min_altitude_to_use_camera_based_trackers = self.config["settings"]["min_altitude_to_use_camera_based_trackers"]
+
 		# Human and FO detection
 		self._radius_of_acceptance_new_human_detections = self.config["settings"]["radius_of_acceptance_new_human_detections"]
 		self._radius_of_acceptance_new_FO_detections = self.config["settings"]["radius_of_acceptance_new_FO_detections"]
@@ -262,9 +265,10 @@ class Perception_master:
 		
 		x_within_bounds = (ground_coverage[1]/2) > abs(ekf_estimate[0])
 		y_within_bounds = (ground_coverage[0]/2) > abs(ekf_estimate[1])
+		z_within_bounds = ekf_estimate[2] < self._min_altitude_to_use_camera_based_trackers
 
 		# If both these are true -> indicates at least 1/4 of the platform should be visible in the camera frame.
-		if x_within_bounds and y_within_bounds:
+		if x_within_bounds and y_within_bounds and z_within_bounds:
 			if not self._tracking_platform:
 				rospy.loginfo("Initiated tracking using perception based estimators. Deactivated GNSS.")
 				
