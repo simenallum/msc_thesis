@@ -45,7 +45,19 @@ class Perception_master:
 		self._tracking_platform = False
 
 		# Platform detection utils
-		self._min_dist_to_initiate_platform_tracking = self.config["settings"]["min_dist_to_initiate_platform_tracking"]
+		self._img_width = rospy.get_param("/drone/camera/img_width")
+		self._img_height = rospy.get_param("/drone/camera/img_height")
+		self._camera_resolution = (self._img_width, self._img_height)
+		self._camera_hfov = rospy.get_param("/drone/camera/camera_hfov")
+
+		self._camera_fov = utils.get_fov_from_hfov(
+			self._img_width,
+			self._img_height,
+			self._camera_hfov
+		)
+
+		# Toggle EKF measurements
+		self._min_altitude_to_use_camera_based_trackers = self.config["settings"]["min_altitude_to_use_camera_based_trackers"]
 
 		# Human and FO detection
 		self._radius_of_acceptance_new_human_detections = self.config["settings"]["radius_of_acceptance_new_human_detections"]
@@ -66,6 +78,9 @@ class Perception_master:
 		self._GNSS_safe_points_tempfile = self.config["temp_filepaths"]["safe_points"]
 		self._GNSS_humans_tempfile = self.config["temp_filepaths"]["human_points"]
 		self._GNSS_FO_tempfile = self.config["temp_filepaths"]["FO_points"]
+		utils.save_np_list_as_csv(self._GNSS_safe_points_tempfile, np.array([]))
+		utils.save_np_list_as_csv(self._GNSS_humans_tempfile, np.array([]))
+		utils.save_np_list_as_csv(self._GNSS_FO_tempfile, np.array([]))
 
 		self._timer = rospy.Timer(rospy.Duration(self.config["settings"]["GNSS_saving_interval"]), self._save_points_as_gnss_timer_callback)
 
@@ -117,12 +132,12 @@ class Perception_master:
 
 			self.all_proxies_loaded = True
 		except:
-			rospy.logerr(f"[Perception master] Couldt not detect one of the activation nodes ROS services -- > Exiting")
-			rospy.signal_shutdown("Service not detected!")
+			rospy.logerr(f"[Perception master] Couldt not detect one of the EKF nodes toggle ROS services -- > Platform tracking not working!")
 
-		self._activate_AT_node_proxy = rospy.ServiceProxy(self._AT_node_activation_name, SetBool)
-		self._activate_DNN_node_proxy = rospy.ServiceProxy(self._DNN_node_activation_name, SetBool)
-		self._activate_GNSS_node_proxy = rospy.ServiceProxy(self._GNSS_node_activation_name, SetBool)
+		if self.all_proxies_loaded:
+			self._activate_AT_node_proxy = rospy.ServiceProxy(self._AT_node_activation_name, SetBool)
+			self._activate_DNN_node_proxy = rospy.ServiceProxy(self._DNN_node_activation_name, SetBool)
+			self._activate_GNSS_node_proxy = rospy.ServiceProxy(self._GNSS_node_activation_name, SetBool)
 
 	def _save_points_as_gnss_timer_callback(self, event):
 		
@@ -246,11 +261,35 @@ class Perception_master:
 		if not self.all_proxies_loaded:
 			return
 		
-		vector = self._extract_ekf_msg(ekf_msg)
+		ekf_estimate = self._extract_ekf_msg(ekf_msg)
+		
+		# Calculate the ground coverage based on camera field of view and drone altitude
+		ground_coverage = utils.calculate_ground_coverage(camera_fov=self._camera_fov, altitude=ekf_estimate[2])
+		
+		x_within_bounds = (ground_coverage[1]/2) > abs(ekf_estimate[0])
+		y_within_bounds = (ground_coverage[0]/2) > abs(ekf_estimate[1])
+		z_within_bounds = ekf_estimate[2] < self._min_altitude_to_use_camera_based_trackers
 
-		length = utils.calculate_euclidian_distance_of_vector(vector)
+		# If both these are true -> indicates at least 1/4 of the platform should be visible in the camera frame.
+		if x_within_bounds and y_within_bounds and z_within_bounds:
+			if not self._tracking_platform:
+				rospy.loginfo("Initiated tracking using perception based estimators. Deactivated GNSS.")
+				
+				# create a request object
+				request = SetBoolRequest()
+				request.data = True
 
-		if length > self._min_dist_to_initiate_platform_tracking:
+				response = self._activate_AT_node_proxy(request)
+				response = self._activate_DNN_node_proxy(request)
+
+				request = SetBoolRequest()
+				request.data = False
+
+				response = self._activate_GNSS_node_proxy(request)
+
+				self._tracking_platform = True
+
+		else:
 			if self._tracking_platform:
 				rospy.loginfo("Stopped tracking using perception based estimators. Activated GNSS.")
 
@@ -268,23 +307,6 @@ class Perception_master:
 				
 				self._tracking_platform = False
 
-		else:
-			if not self._tracking_platform:
-				rospy.loginfo("Initiated tracking using perception based estimators. Deactivated GNSS.")
-				
-				# create a request object
-				request = SetBoolRequest()
-				request.data = True
-
-				response = self._activate_AT_node_proxy(request)
-				response = self._activate_DNN_node_proxy(request)
-
-				request = SetBoolRequest()
-				request.data = False
-
-				response = self._activate_GNSS_node_proxy(request)
-
-				self._tracking_platform = True
 
 			
 

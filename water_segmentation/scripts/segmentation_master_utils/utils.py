@@ -54,7 +54,7 @@ def compare_image_masks(image1, image2):
     same_pixels = np.equal(image1, image2)
 
     # Calculate the percentage of same pixels
-    percentage = (np.sum(same_pixels) / float(image1.size)) * 100
+    percentage = (np.sum(same_pixels) / float(image1.size))
 
     return percentage
 

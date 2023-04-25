@@ -58,6 +58,8 @@ class DL_segmentation:
 		self._last_image = [None]
 		self._debug = self.config['debug']
 
+		self._segmentation_times = []
+
 	def _setup_subscribers(self):
 		rospy.Subscriber(
 			self.config["topics"]["input"]["image"], 
@@ -116,7 +118,9 @@ class DL_segmentation:
 		)
 
 		# Record end time
-		rospy.logdebug("Time taken: {:.2f} seconds".format(time.time() - start_time))
+		seg_time = time.time() - start_time
+		self._segmentation_times.append(seg_time)
+		rospy.logdebug("Time taken: {:.2f} seconds".format(seg_time))
 
 		mask_image = mask_to_image(mask, self.mask_values)
 
@@ -143,6 +147,11 @@ class DL_segmentation:
 
 	def _shutdown(self):
 		rospy.loginfo("Shutting down Deep Learning based Segmentation node")
+
+		np_segtimes = np.array(self._segmentation_times)
+		print("Mean segmenation times: ", np_segtimes.mean())
+		print("Max segmenation time: ", np_segtimes.max())
+		print("Median segmentation time: ", np.median(np_segtimes))
 
 	def start(self):
 		rospy.loginfo("Starting Deep Learning based Segmentation node")

@@ -14,6 +14,16 @@
 
     </node>
 
+    <node
+        name="custom2std"
+        pkg="pix2geo"
+        type="run_custom2std_msg_converter.py"
+        output="screen">
+        
+        <param name="config_file" value="custom2std.yaml" />
+
+    </node>
+
     <node name="compas_meas_throttler" type="throttle" pkg="topic_tools" args="messages /compass_heading 5 compass_heading_t" />
 
 </launch>

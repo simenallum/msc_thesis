@@ -71,3 +71,18 @@ def convert_ned_list_to_gnss_list(ned_frame_origin, ned_list):
 
 def save_np_list_as_csv(outfile, np_array):
     np.savetxt(outfile, np_array, delimiter=',', newline="\n")
+
+def calculate_ground_coverage(camera_fov: tuple, altitude: float):
+    hfov = camera_fov[0]
+    vfov = camera_fov[1]
+
+    h_coverage = (altitude * np.tan(np.deg2rad(hfov / 2))) * 2
+    v_coverage = (altitude * np.tan(np.deg2rad(vfov / 2))) * 2
+
+    return (h_coverage, v_coverage)
+
+def get_fov_from_hfov(image_width, image_height, hfov):
+	aspect_ratio = image_width / image_height
+	vfov = math.degrees(2 * math.atan(math.tan(math.radians(hfov / 2)) / aspect_ratio))
+
+	return (hfov, vfov)

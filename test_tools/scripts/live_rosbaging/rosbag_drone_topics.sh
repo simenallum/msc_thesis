@@ -49,6 +49,7 @@ ANAFI_PT_TOPICS="/anafi/image \
         /anafi/height \
         /anafi/pose \
         /anafi/polled_body_velocities \
+        /anafi/optical_flow_velocities \
         /estimate/aprilTags/pose \
         /estimate/dnn_cv/position \
         /estimate/ekf \
@@ -161,7 +162,7 @@ if [[ $ENV == "sim" ]]; then
     echo "Rosbagging sim topics"
     rosbag record -O $OUTPUT_DIR/$TIME \
         $STANDARD_TOPICS 
-elif [[ $ENV == "lab" ]]; then
+elif [[ $ENV == "lab_eval_pt" ]]; then
     echo "Rosbagging lab topics"
     rosbag record -O $OUTPUT_DIR/$TIME \
         $ANAFI_PT_TOPICS \

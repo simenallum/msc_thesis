@@ -264,7 +264,7 @@ class EKFRosRunner():
 
 		def _dnn_cv_position_cb(self, msg: geometry_msgs.msg.PointStamped):
 				# Only use dnncv for altitude measurement if above certain altitude (not reliable below)
-				if self.ekf_estimate.mean[2] > 0.7: #TODO Remove magic constant
+				if self.ekf_estimate.mean[2] > 1.0: #TODO Remove magic constant
 						z = np.array([msg.point.x, msg.point.y, msg.point.z])
 						self.ekf_estimate = self.filter.update(z, self.ekf_estimate, "dnn_cv_position")
 				else:
