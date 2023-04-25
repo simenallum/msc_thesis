@@ -78,6 +78,9 @@ class Perception_master:
 		self._GNSS_safe_points_tempfile = self.config["temp_filepaths"]["safe_points"]
 		self._GNSS_humans_tempfile = self.config["temp_filepaths"]["human_points"]
 		self._GNSS_FO_tempfile = self.config["temp_filepaths"]["FO_points"]
+		utils.save_np_list_as_csv(self._GNSS_safe_points_tempfile, np.array([]))
+		utils.save_np_list_as_csv(self._GNSS_humans_tempfile, np.array([]))
+		utils.save_np_list_as_csv(self._GNSS_FO_tempfile, np.array([]))
 
 		self._timer = rospy.Timer(rospy.Duration(self.config["settings"]["GNSS_saving_interval"]), self._save_points_as_gnss_timer_callback)
 
@@ -129,12 +132,12 @@ class Perception_master:
 
 			self.all_proxies_loaded = True
 		except:
-			rospy.logerr(f"[Perception master] Couldt not detect one of the activation nodes ROS services -- > Exiting")
-			rospy.signal_shutdown("Service not detected!")
+			rospy.logerr(f"[Perception master] Couldt not detect one of the EKF nodes toggle ROS services -- > Platform tracking not working!")
 
-		self._activate_AT_node_proxy = rospy.ServiceProxy(self._AT_node_activation_name, SetBool)
-		self._activate_DNN_node_proxy = rospy.ServiceProxy(self._DNN_node_activation_name, SetBool)
-		self._activate_GNSS_node_proxy = rospy.ServiceProxy(self._GNSS_node_activation_name, SetBool)
+		if self.all_proxies_loaded:
+			self._activate_AT_node_proxy = rospy.ServiceProxy(self._AT_node_activation_name, SetBool)
+			self._activate_DNN_node_proxy = rospy.ServiceProxy(self._DNN_node_activation_name, SetBool)
+			self._activate_GNSS_node_proxy = rospy.ServiceProxy(self._GNSS_node_activation_name, SetBool)
 
 	def _save_points_as_gnss_timer_callback(self, event):
 		

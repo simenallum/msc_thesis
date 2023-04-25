@@ -178,6 +178,7 @@ class Pix2Geo:
 
 	def _prepare_safe_point_message(self, point):
 		msg = PointStamped()
+		msg.header.frame_id = "world"
 		msg.header.stamp = rospy.Time.now()
 
 		msg.point.x = point[0]
@@ -202,6 +203,7 @@ class Pix2Geo:
 
 	def _prepare_out_message(self, world_coordinates, track_id, det_probability, class_name):
 		msg = TrackWorldCoordinate()
+		msg.header.frame_id = "world"
 		msg.header.stamp = rospy.Time.now()
 
 		msg.x = world_coordinates[0]

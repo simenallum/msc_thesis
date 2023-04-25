@@ -176,7 +176,7 @@ class Segmentation_master:
 
 		timestamp_at_mask_received = rospy.Time.now()
 
-		if self._last_height_meas[0] < self._min_altitude_to_use_dl_segmentation:
+		if (self._last_height_meas[0] < self._min_altitude_to_use_dl_segmentation) and self._use_offline_map_segmentation:
 			mask = map_mask_image
 
 		elif self._use_dl_segmentation and self._use_offline_map_segmentation:
@@ -219,7 +219,7 @@ class Segmentation_master:
 			
 		start_time = time.time()
 		safe_points = utils.find_safe_areas(mask, safe_dist_px, stride=self._stride)
-		rospy.loginfo("Time taken to find SP: {:.2f} seconds".format(time.time() - start_time))
+		rospy.logdebug("Time taken to find SP: {:.2f} seconds".format(time.time() - start_time))
 
 		if not (np.any(safe_points) == None):
 			self._publish_safe_point(safe_points, timestamp=timestamp_at_mask_received)
@@ -243,8 +243,8 @@ class Segmentation_master:
 		msg = PointStamped()
 		msg.header.stamp = timestamp
 
-		msg.point.x = point[0]
-		msg.point.y = point[1]
+		msg.point.x = point[1]
+		msg.point.y = point[0]
 
 		return msg
 

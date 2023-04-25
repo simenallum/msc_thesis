@@ -1,0 +1,13 @@
+topics:
+  input:
+    tracks_raw: "/search/tracks/world_coordinates"
+    perception_detected_humans: "/perception/detected_person"
+  output:
+    humans_raw: "/debug/tracks/humans_raw"
+    floating_objects_raw: "/debug/floating_objects_raw"
+    perception_detected_humans: "/debug/perception_detected_humans"
+    perception_floating_objects: "/debug/perception_floating_objects"
+
+settings:
+  confidence_threshold: 0.1
+  floating_object_perception_master_threshold: 0.8 # This has to be set to the same value as the one in perception masters
