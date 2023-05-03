@@ -270,7 +270,7 @@ class Perception_master:
 		y_within_bounds = (ground_coverage[0]/2) > abs(ekf_estimate[1])
 		z_within_bounds = ekf_estimate[2] < self._min_altitude_to_use_camera_based_trackers
 
-		# If both these are true -> indicates at least 1/4 of the platform should be visible in the camera frame.
+		# If all these are true -> indicates at least 1/4 of the platform should be visible in the camera frame.
 		if x_within_bounds and y_within_bounds and z_within_bounds:
 			if not self._tracking_platform:
 				rospy.loginfo("Initiated tracking using perception based estimators. Deactivated GNSS.")

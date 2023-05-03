@@ -10,9 +10,9 @@ topics:
     gnss: "/anafi/gnss_location"
     drone_pose: "/anafi/pose"
     height: "/anafi/height"
-    drone_image: "/anafi/image" # Only used for debugging
+    drone_image: "/anafi/image" # Only used in this node for debugging
   output: 
-    water_mask: "/segmentation/offline_mask"
+    water_mask: "/debug/segmentation_offline_mask"
 
 services:
   make_mask: make_offline_mask

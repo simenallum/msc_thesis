@@ -64,7 +64,6 @@ OUTSIDE="/anafi/image \
         /anafi/height \
         /anafi/optical_flow_velocities \
         /anafi/pose \
-        /anafi/odometry \
         /anafi/rpy \
         /anafi/polled_body_velocities \
         /anafi/rpy \
@@ -108,7 +107,6 @@ ANAFI_CMD_TOPICS="/anafi/cmd_takeoff \
         /anafi/cmd_moveby \
         /anafi/cmd_camera"
 
-DARKNET_TOPICS="/darknet_ros/bounding_boxes"
 
 ESTIMATE_TOPICS="/estimate/dnn_cv/heading \
         /estimate/dnn_cv/position \
@@ -125,22 +123,6 @@ QUAlISYS_TOPICS="/qualisys/Anafi/odom \
 GNC_TOPICS="/guidance/pure_pursuit/velocity_reference \
         /guidance/pid/velocity_reference"
 
-EVAL_SEG_TOPICS="/SEGMASK_with_SP \
-        /SEGMASK_dice_score \
-        /SEGMASK_percentage_DL_mask_used \
-        /anafi/image \
-        /anafi/gnss_location \
-        /anafi/height \
-        /anafi/pose \
-        /anafi/rpy \
-        /tf \
-        /tf_static \
-        /anafi/ned_pos_from_gnss \
-        /segmentation/safe_points/camera_frame \
-        /segmentation/safe_points/world_frame \
-        /segmentation/dl_mask \
-        /segmentation/offline_mask"
-
 BAREBONE_TOPICS="/anafi/image \
         /anafi/gnss_location \
         /anafi/height \
@@ -151,9 +133,31 @@ BAREBONE_TOPICS="/anafi/image \
         /anafi/optical_flow_velocities \
         /anafi/polled_body_velocities"
 
+TRANSFORM_TOPICS="/tf \
+        /tf_static"
+
+SEGMENTATION_TOPICS="/segmentation/safe_points/image_coordinates"
+
+DEBUG_TOPICS="/debug/segmentation_mask_with_sp \
+        /debug/segmentation_mask_overlap_percentage \
+        /debug/segmentation_dl_mask_used_percentage \
+        /debug/segmentation_offline_mask \
+        /debug/segmentation_dl_mask \
+        /debug/tracks/humans_raw \
+        /debug/floating_objects_raw \
+        /debug/perception_detected_humans \
+        /debug/perception_floating_objects"
+
+PLATFORM_TRACKER_TOPICS="/estimate/ekf \
+        /estimate/ekf/velocity \
+        /anafi/gnss_ned_in_body_frame/downsampled \
+        /estimate/aprilTags/pose \
+        /estimate/dnn_cv/position \
+        /estimate/aprilTags/num_tags_detected \
+        /yolo/platform/boxes"
+
 STANDARD_TOPICS="$ANAFI_OUTPUT_TOPICS \
         $ANAFI_CMD_TOPICS \
-        $DARKNET_TOPICS \
         $ESTIMATE_TOPICS \
         $GNC_TOPICS \
         /tf" 
