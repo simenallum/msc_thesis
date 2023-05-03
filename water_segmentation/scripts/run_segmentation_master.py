@@ -53,7 +53,7 @@ class Segmentation_master:
 		self._min_altitude_to_generate_safe_points = self.config["settings"]["min_altitude_to_generate_safe_points"]
 		self._min_altitude_to_use_dl_segmentation = self.config["settings"]["min_altitude_to_use_dl_segmentation"]
 
-		self._dice_threshold = self.config["settings"]["dice_threshold"]
+		self._mask_percentage_equality_threshold = self.config["settings"]["mask_percentage_equality_threshold"]
 		self._safe_metric_dist = self.config["settings"]["min_safe_metric_dist"]
 
 		self._debug = self.config["debug"]
@@ -123,20 +123,20 @@ class Segmentation_master:
 		)
 
 		if self._debug:
-			self.mask_pub = rospy.Publisher(
-				"SEGMASK_with_SP", 
+			self._mask_pub = rospy.Publisher(
+				"/debug/segmentation_mask_with_sp", 
 				sensor_msgs.msg.Image, 
 				queue_size=10
 			)
 
-			self.dice_score_pub = rospy.Publisher(
-				"SEGMASK_dice_score",
+			self._overlap_percentage_pub = rospy.Publisher(
+				"/debug/segmentation_mask_overlap_percentage",
 				Float64,
 				queue_size=10
 			)
 
-			self.percentage_DL_mask_used_pub = rospy.Publisher(
-				"SEGMASK_percentage_DL_mask_used",
+			self._percentage_DL_mask_used_pub = rospy.Publisher(
+				"/debug/segmentation_dl_mask_used_percentage",
 				Float64,
 				queue_size=10
 			)
@@ -182,7 +182,7 @@ class Segmentation_master:
 		elif self._use_dl_segmentation and self._use_offline_map_segmentation:
 			# Check if the two masks overlap roughly -> indicates DL seg mask is usable
 			pecentage_overlap = utils.compare_image_masks(dl_mask_image, map_mask_image)
-			if (pecentage_overlap > self._dice_threshold):
+			if (pecentage_overlap > self._mask_percentage_equality_threshold):
 				mask = dl_mask_image
 
 				if self._debug:
@@ -198,13 +198,13 @@ class Segmentation_master:
 			if self._debug:
 				msg = Float64()
 				msg.data = pecentage_overlap
-				self.dice_score_pub.publish(msg)
+				self._overlap_percentage_pub.publish(msg)
 
 				count_ones = self._DL_mask_usage_counter.count(1)
 				percentage_ones = (count_ones / len(self._DL_mask_usage_counter)) * 100
 				msg = Float64()
 				msg.data = percentage_ones
-				self.percentage_DL_mask_used_pub.publish(msg)
+				self._percentage_DL_mask_used_pub.publish(msg)
 
 		elif self._use_offline_map_segmentation:
 			mask = map_mask_image
@@ -236,7 +236,7 @@ class Segmentation_master:
 				cv2.circle(mask_rgb, center, 10, (255, 0, 0), -1)
 
 			# Publish the image as a uint8
-			self.mask_pub.publish(self.bridge.cv2_to_imgmsg(mask_rgb, "rgb8"))
+			self._mask_pub.publish(self.bridge.cv2_to_imgmsg(mask_rgb, "rgb8"))
 
 
 	def _prepare_out_message(self, point, timestamp):
