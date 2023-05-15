@@ -33,7 +33,7 @@ if [ "$run_perception_master" = true ]; then
 
     tmux select-pane -t 3
     tmux send-keys "bash ~/catkin_ws/src/msc_thesis/init_camera.sh" Enter
-    tmux send-keys "rosrun rviz rviz"
+    tmux send-keys "nvidia-smi -l"
 
     # tmux split-window -v
     # . source_noetic.sh
