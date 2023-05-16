@@ -2,8 +2,8 @@
 
 run_perception_master=true
 run_platform_tracker=false
-run_segmentation=true
-run_search=false
+run_segmentation=false
+run_search=true
 start_roscore=false
 
 

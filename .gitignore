@@ -14,6 +14,6 @@ utilities/platform_dataset_raw/*
 offline_utils/train_yolov8/Platform-3
 offline_utils/train_yolov8/Platform-2
 /offline_utils/train_yolov8/platform_detection
-project_thesis_utils/platform_dataset_raw
+offline_utils/platform_dataset_raw
 *.html
 /water_segmentation/data/debug/Up_and_down/*
