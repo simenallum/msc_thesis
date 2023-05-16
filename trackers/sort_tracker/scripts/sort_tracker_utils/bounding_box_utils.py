@@ -11,17 +11,18 @@ def convert_bboxes(bboxes):
         result.append([xmin, ymin, xmax, ymax, bbox.probability, bbox.id])
     return np.array(result)
 
-def draw_detections(image, tracks, mask_alpha=0.3):
+def draw_detections(image, tracks,  human_min_conf=0.5, FO_min_conf=0.8, mask_alpha=0.3):
     boxes = []
     scores = []
     class_id = []
     track_ids = []
 
     for i in range(len(tracks)):
-        boxes.append([int(tracks[i][0]), int(tracks[i][1]), int(tracks[i][2]), int(tracks[i][3])])
-        track_ids.append(tracks[i][4])
-        class_id.append(tracks[i][5])
-        scores.append(tracks[i][6])
+        if ((tracks[i][5] == 0.0) and (tracks[i][6] > human_min_conf)) or ((tracks[i][5] == 1.0) and (tracks[i][6] > FO_min_conf)):
+            boxes.append([int(tracks[i][0]), int(tracks[i][1]), int(tracks[i][2]), int(tracks[i][3])])
+            track_ids.append(tracks[i][4])
+            class_id.append(tracks[i][5])
+            scores.append(tracks[i][6])
 
     mask_img = image.copy()
     det_img = image.copy()

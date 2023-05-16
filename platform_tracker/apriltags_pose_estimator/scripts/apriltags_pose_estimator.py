@@ -9,6 +9,9 @@ import yaml
 import time
 import numpy as np
 
+from cv_bridge import CvBridge
+
+
 from std_msgs.msg import Header
 from std_srvs.srv import SetBool, SetBoolRequest, SetBoolResponse
 
@@ -60,6 +63,9 @@ class aprilTagsPoseEstimator():
 				self.processing_image = False
 				self.detector_initialized = False
 
+				self.bridge = CvBridge()
+
+
 				rospy.Subscriber("/anafi/image/downsampled", sensor_msgs.msg.Image,
 						self._new_image_cb
 				)
@@ -71,6 +77,11 @@ class aprilTagsPoseEstimator():
 				self.pose_estimate_publisher_camera_frame = rospy.Publisher(
 						"/estimate/aprilTags/pose/camera_frame", EulerPose, queue_size=10
 				)
+
+				if self.view_camera_output:
+					self.camera_output_pub = rospy.Publisher(
+							"/estimate/apritags/camera_output", sensor_msgs.msg.Image, queue_size=10
+					)
 
 				self.num_tags_detected_publisher = rospy.Publisher(
 						"/estimate/aprilTags/num_tags_detected", Float32Stamped, queue_size=10
@@ -125,7 +136,9 @@ class aprilTagsPoseEstimator():
 						print(f"Used {corner_detection_duration:.4f} sec to detect corners of aprilTags")
 
 				if self.view_camera_output:
-						self.detector.show_tag_corners_found(img, detections)
+					image = self.detector.show_tag_corners_found(img, detections, offline=True)
+					msg = self.bridge.cv2_to_imgmsg(image, "bgr8")
+					self.camera_output_pub.publish(msg)
 						
 				if len(detections) == 0:
 						return
