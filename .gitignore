@@ -17,3 +17,5 @@ offline_utils/train_yolov8/Platform-2
 offline_utils/platform_dataset_raw
 *.html
 /water_segmentation/data/debug/Up_and_down/*
+project_thesis_utils/boats_detection_conf/*
+project_thesis_utils/platform_det_img/*
