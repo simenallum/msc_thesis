@@ -9,7 +9,7 @@
     <group if="$(arg run_apriltags_pose_estimator)">
         
         <arg name="calculate_run_times" default="false" />
-        <arg name="view_camera_output" default="false" />
+        <arg name="view_camera_output" default="true" />
         <arg name="calculate_fullpipe_runtimes" default="false" />
         
         

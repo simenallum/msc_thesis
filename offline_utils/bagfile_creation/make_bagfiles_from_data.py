@@ -50,7 +50,7 @@ def write_to_bagfile(json_file, image_folder, video_name):
                 # Convert to ROS message
                 msg = bridge.cv2_to_imgmsg(img, "bgr8")
                 msg.header.stamp = convert_to_ros_time(image['date_time'])
-                bag.write('/image', msg, t=msg.header.stamp)
+                bag.write('/anafi/image', msg, t=msg.header.stamp)
 
                 boundingBoxes = BoundingBoxes()
                 gt_boundingBoxes = BoundingBoxes()

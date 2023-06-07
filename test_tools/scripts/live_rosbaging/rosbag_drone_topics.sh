@@ -148,13 +148,12 @@ DEBUG_TOPICS="/debug/segmentation_mask_with_sp \
         /debug/perception_detected_humans \
         /debug/perception_floating_objects"
 
-PLATFORM_TRACKER_TOPICS="/estimate/ekf \
-        /estimate/ekf/velocity \
-        /anafi/gnss_ned_in_body_frame/downsampled \
+PLATFORM_TRACKER_TOPICS="/anafi/gnss_ned_in_body_frame/downsampled \
         /estimate/aprilTags/pose \
         /estimate/dnn_cv/position \
         /estimate/aprilTags/num_tags_detected \
-        /yolo/platform/boxes"
+        /estimate/ekf \
+        /anafi/height"
 
 STANDARD_TOPICS="$ANAFI_OUTPUT_TOPICS \
         $ANAFI_CMD_TOPICS \
@@ -182,10 +181,13 @@ elif [[ $ENV == "real" ]]; then
 elif [[ $ENV == "all" ]]; then
     echo "Rosbagging all topics"
     rosbag record -a -O $OUTPUT_DIR/$TIME
+elif [[ $ENV == "all_offline" ]]; then
+    echo "Rosbagging all topics"
+    rosbag record -a -O $OUTPUT_DIR/$TIME
 elif [[ $ENV == "eval_pt" ]]; then
     echo "Rosbagging all topics"
     rosbag record -O $OUTPUT_DIR/$TIME \
-        $ANAFI_PT_TOPICS
+        $PLATFORM_TRACKER_TOPICS
 elif [[ $ENV == "seg_eval" ]]; then
     echo "Rosbagging segmenation eval topics"
     rosbag record -O $OUTPUT_DIR/$TIME \

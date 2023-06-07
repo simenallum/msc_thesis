@@ -63,7 +63,8 @@ class Perception_master:
 		self._radius_of_acceptance_new_human_detections = self.config["settings"]["radius_of_acceptance_new_human_detections"]
 		self._radius_of_acceptance_new_FO_detections = self.config["settings"]["radius_of_acceptance_new_FO_detections"]
 		self._critical_level_distances = self.config["settings"]["critical_level_distances"]
-		self._track_confidence_threshold = self.config["settings"]["track_confidence_threshold"]
+		self._human_track_confidence_threshold = self.config["settings"]["human_track_confidence_threshold"]
+		self._FO_track_confidence_threshold = self.config["settings"]["FO_track_confidence_threshold"]
 		self._human_table = {}
 		self._FO_table = {}
 		self._track_critical_level_table = {}
@@ -190,13 +191,12 @@ class Perception_master:
 
 	def _new_track_callback(self, track_msg):
 		track = self._extract_track_msg(track_msg)
-
-		# Only handle track if confidence is high enough
-		if track["confidence"] <= self._track_confidence_threshold:
-			return
-
+		
 		# Handle human tracks
 		if track["class_name"] == "human":
+			if track["confidence"] <= self._human_track_confidence_threshold:
+				return
+
 			pub_track = False
 
 			# Track_id already exists
@@ -233,6 +233,9 @@ class Perception_master:
 
 		# Handle FO tracks
 		elif track["class_name"] == "floating-objects":
+			if track["confidence"] <= self._FO_track_confidence_threshold:
+				return
+			
 			# Track_id already exists
 			if utils.key_exists(track["track_id"], self._FO_table):
 				distance_between_measurements = utils.calculate_euclidian_distance(track["point"], self._FO_table[track["track_id"]])

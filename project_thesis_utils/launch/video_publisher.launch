@@ -13,7 +13,3 @@
 
   <node name="image_throttler" type="throttle" pkg="topic_tools" args="messages /anafi/image 15 /anafi/image_t" />
 </launch>
-
-
-<!-- DJI_0915_0002_40m_1.mp4 -->
-

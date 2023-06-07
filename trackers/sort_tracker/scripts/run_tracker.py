@@ -108,7 +108,7 @@ class SortTracker:
 		track_list = self._extract_bbs_and_trackid(tracks)
 
 		if self.flag_publish_images_with_tracks:
-			image = draw_detections(frame, tracks)
+			image = draw_detections(frame, tracks, human_min_conf=0.5, FO_min_conf=0.8)
 			self._publish_image_with_tracks(image)
 
 		if len(track_list) > 0:

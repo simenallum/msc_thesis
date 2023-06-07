@@ -8,6 +8,11 @@ from functools import reduce
 from scipy.spatial.transform import Rotation
 import ipympl
 
+
+from mpl_toolkits import mplot3d
+
+
+
 %matplotlib widget
 
 sns.set_theme()
@@ -34,12 +39,7 @@ def normalize_df_time(df):
 
     return df
 
-def merge_dfs(dataframes: list):
-    df_merged = reduce(lambda left,right: pd.merge_asof(left, right, on="Time", allow_exact_matches=True, direction="nearest", tolerance=0.01), dataframes)
-
-    return df_merged
-
-def sync_dfs_based_on_time(dataframes: list):
+def sync_dfs_based_on_time(dataframes: list, start_time=None, end_time=None):
     import math
     earliest_time = math.inf
     for frame in dataframes:
@@ -48,6 +48,15 @@ def sync_dfs_based_on_time(dataframes: list):
 
     for frame in dataframes:
         frame['Time'] -= earliest_time
+
+    if start_time != None:
+        for i in range(len(dataframes)):
+            dataframes[i] = dataframes[i][dataframes[i]['Time'] >= start_time]
+
+    if end_time != None:
+        for i in range(len(dataframes)):
+            dataframes[i] = dataframes[i][dataframes[i]['Time'] <= end_time]
+
 
     return dataframes
 
@@ -101,7 +110,7 @@ def Mask_Or_Drop_Successive_Identical_Values(df, drop=False,
     else:
         return df
 
-def get_np_arr_without_nan(df_list, datacols_list, remove_identicals=True):
+def get_np_arr_without_nan(df_list, datacols_list, remove_identicals=False):
     np_column = np.array(["Time"] + datacols_list)
     for i in range(len(df_list)):
         if df_list[i].columns.shape == np_column.shape:

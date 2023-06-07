@@ -2,8 +2,8 @@
 
 run_perception_master=true
 run_platform_tracker=false
-run_segmentation=true
-run_search=false
+run_segmentation=false
+run_search=true
 start_roscore=false
 
 
@@ -33,7 +33,7 @@ if [ "$run_perception_master" = true ]; then
 
     tmux select-pane -t 3
     tmux send-keys "bash ~/catkin_ws/src/msc_thesis/init_camera.sh" Enter
-    tmux send-keys "rosrun rviz rviz"
+    tmux send-keys "nvidia-smi -l"
 
     # tmux split-window -v
     # . source_noetic.sh
