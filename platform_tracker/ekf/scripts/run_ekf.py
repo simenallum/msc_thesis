@@ -82,8 +82,6 @@ class EKFRosRunner():
 				self.dt = self.config["ekf"]["dt"]
 				self.rate = rospy.Rate(1/self.dt)
 
-				## The altitude measurement is unusable in the startup-phase and has to be delayed started.
-				# self.timer = rospy.Timer(rospy.Duration(20), self._trigger_altitude_measurements_cb, oneshot=True)
 				self.altitude_enabled = False
 
 				# Keep track of when the first measurement arrives and only then start
@@ -142,23 +140,21 @@ class EKFRosRunner():
 				if self.has_inputs:
 						rospy.spin()
 				else:
-						while not rospy.is_shutdown():
+					while not rospy.is_shutdown():
 
-								if self.estimating:
-										start_time = time.time()
+						if self.estimating:
+								start_time = time.time()
 
-										self.ekf_estimate = self.filter.predict(self.ekf_estimate, None, self.dt)
-										output_msg = self._pack_estimate_msg(self.ekf_estimate, self.output_states)
-										self.estimate_publisher.publish(output_msg)
-										self.publish_velocity_states()
+								self.ekf_estimate = self.filter.predict(self.ekf_estimate, None, self.dt)
+								output_msg = self._pack_estimate_msg(self.ekf_estimate, self.output_states)
+								self.estimate_publisher.publish(output_msg)
+								self.publish_velocity_states()
 
-										runtime = time.time() - start_time
-										self.iter_time.append(runtime)
+								runtime = time.time() - start_time
+								self.iter_time.append(runtime)
 
-								self.rate.sleep()
+						self.rate.sleep()
 								
-		def _trigger_altitude_measurements_cb(self, timer):
-			self.altitude_enabled = True
 
 		def _get_estimate_publisher(self, output_states: str):
 				if output_states == "position":
@@ -276,7 +272,7 @@ class EKFRosRunner():
 			if not self.altitude_enabled:
 				self.altitude_enabled = True
 
-			# Turn on the filter at first seen AT -> aka take-off
+			# Turn on the filter at first seen AT -> take-off
 			if not self.estimating:
 				self.estimating = True
 				

@@ -1,8 +1,8 @@
 #!/bin/bash
 
 run_perception_master=true
-run_platform_tracker=false
-run_segmentation=false
+run_platform_tracker=true
+run_segmentation=true
 run_search=true
 start_roscore=false
 
@@ -33,11 +33,7 @@ if [ "$run_perception_master" = true ]; then
 
     tmux select-pane -t 3
     tmux send-keys "bash ~/catkin_ws/src/msc_thesis/init_camera.sh" Enter
-    tmux send-keys "nvidia-smi -l"
-
-    # tmux split-window -v
-    # . source_noetic.sh
-    # tmux send-keys "rostopic echo /perception/detected_person" Enter
+    tmux send-keys "nvidia-smi -l" Enter
 
 fi
 

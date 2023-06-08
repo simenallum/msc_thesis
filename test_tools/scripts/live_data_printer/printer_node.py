@@ -11,6 +11,9 @@ from scipy.spatial.transform import Rotation
 
 import pymap3d
 
+'''
+	Used to compare Drone reported attitude (rpy and quat) with qualisys reported attitude.
+'''
 
 class DataPrinter:
 

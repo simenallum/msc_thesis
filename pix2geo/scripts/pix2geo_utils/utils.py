@@ -88,6 +88,10 @@ def calculate_detection_location(camera_fov, detection_pixels, drone_position, i
 	return (x_camera, y_camera, z_camera)
 
 def transform_point_cam_to_world(point, translation, yaw_deg):
+	'''
+		Legacy function. 
+		Manual transformation of points from cam to world.
+	'''
 	fixed_rotation = Rotation.from_euler('z', 90, degrees=True)
 	yaw_rotation = Rotation.from_euler('z', yaw_deg, degrees=True)
 

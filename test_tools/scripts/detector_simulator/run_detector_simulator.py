@@ -14,7 +14,9 @@ import utils.apriltags_detector as apriltags_detector
 from utils.visualiations import draw_detections
 
 
-
+'''
+	Used to simulate BB detections on the drone lab based on AprilTag detections.
+'''
 
 class DetectorSimulator:
 

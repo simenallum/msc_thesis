@@ -157,6 +157,14 @@ class Segmentation_master:
 		request = sendMaskRequest()
 		request.image_request = True
 
+		if self._use_offline_map_segmentation:
+			# call the service and get the response
+			response = self._map_mask_service_proxy(request)
+
+			# process the response
+			map_mask_msg = response.image_data
+			map_mask_image = self.bridge.imgmsg_to_cv2(map_mask_msg, "mono8")
+
 		if self._use_dl_segmentation:
 			start_time = time.time()
 			# call the service and get the response
@@ -166,16 +174,9 @@ class Segmentation_master:
 			dl_mask_msg = response.image_data
 			dl_mask_image = self.bridge.imgmsg_to_cv2(dl_mask_msg, "mono8")
 
-		if self._use_offline_map_segmentation:
-			# call the service and get the response
-			response = self._map_mask_service_proxy(request)
-
-			# process the response
-			map_mask_msg = response.image_data
-			map_mask_image = self.bridge.imgmsg_to_cv2(map_mask_msg, "mono8")
-
 		timestamp_at_mask_received = rospy.Time.now()
 
+		# Altitude is too low to trust DL map -> use offline map mask
 		if (self._last_height_meas[0] < self._min_altitude_to_use_dl_segmentation) and self._use_offline_map_segmentation:
 			mask = map_mask_image
 
@@ -188,7 +189,7 @@ class Segmentation_master:
 				if self._debug:
 					self._DL_mask_usage_counter.append(1)
 
-			# DL map is too risky to use -> use the more safe map seg mask
+			# DL map is too risky to use -> use the more safe offline map seg mask
 			else:
 				mask = map_mask_image
 
@@ -212,8 +213,10 @@ class Segmentation_master:
 		elif self._use_dl_segmentation:
 			mask = dl_mask_image
 
+		# Convert the metric safe landing area size requirement to a pixel requirement
 		safe_dist_px = utils.convert_save_dist_to_px(self._focal_length, self._last_height_meas, self._safe_metric_dist)
 
+		# Return if the requirement is larger than what we see in the camera
 		if safe_dist_px > min(self._camera_resolution):
 			return
 			
