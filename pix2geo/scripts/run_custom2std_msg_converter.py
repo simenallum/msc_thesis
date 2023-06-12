@@ -9,6 +9,11 @@ from geometry_msgs.msg import PointStamped
 from perception_master.msg import DetectedPerson
 from pix2geo.msg import TrackWorldCoordinate
 
+'''
+	ONLY USED FOR DEBUGGING.
+	This file is only used to convert all custom messages to std message formats that Rviz can plot. 
+'''
+
 class custom2std:
 
 	def __init__(self, config_file=None, deepsort_params=None):

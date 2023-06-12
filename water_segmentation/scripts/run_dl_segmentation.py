@@ -112,7 +112,7 @@ class DL_segmentation:
 		mask = predict_img(
 			net=self.model,
 			full_img=self._last_image,
-			scale_factor=0.5,
+			scale_factor=0.5, # Scale parameter not used. Inference is performed at fixed 256x256 res
 			out_threshold=0.5,
 			device=self.device
 		)

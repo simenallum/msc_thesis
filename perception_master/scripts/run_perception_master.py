@@ -141,7 +141,10 @@ class Perception_master:
 			self._activate_GNSS_node_proxy = rospy.ServiceProxy(self._GNSS_node_activation_name, SetBool)
 
 	def _save_points_as_gnss_timer_callback(self, event):
-		
+		'''
+			Convert all points in the tables to GNSS format at given times, and save them to file.
+			Allowes for plotting points on map after a flight.
+		'''
 		if len(self._safe_points_list) > 0:
 			safe_points_gnss = utils.convert_ned_list_to_gnss_list(self._NED_frame_origin, self._safe_points_list)
 			utils.save_np_list_as_csv(self._GNSS_safe_points_tempfile, np.array(safe_points_gnss))
@@ -351,6 +354,10 @@ class Perception_master:
 		self._detected_person_pub.publish(human_detection_msg)
 
 	def _shutdown(self):
+		'''
+			When this node is shutdown, a html-map is created in tempfiles/gnss_points.html
+		'''
+		
 		rospy.loginfo("[Perception master]: Shutting down node")
 
 		# Create a folium map centered on the first NED frame origin
